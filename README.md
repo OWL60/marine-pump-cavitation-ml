@@ -94,6 +94,7 @@ You are free to:
 - Use the software for personal and commercial purposes
 - Modify and distribute the source code
 - Include the software in proprietary projects
+  
 Under the following conditions:
 - The original copyright notice and license must be included in all copies or substantial portions of the software
 - The software is provided “as is”, without warranty of any kind.
