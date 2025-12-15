@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this code or methodology in your research, please cite it as follows."
+title: "AI-Based Vibration Analysis for Early Fault Detection in Marine Diesel Engines"
+type: software
+authors:
+  - family-names: Hassan
+    given-names: Abdulrahim Muhammad
+    affiliation: "Dar es Salaam Maritime Institute"
+keywords:
+  - Marine Engineering
+  - Vibration Analysis
+  - Artificial Intelligence
+  - Machine Learning
+  - Condition-Based Maintenance
+  - Fault Detection
+
+version: 1.0.0
+license: MIT
