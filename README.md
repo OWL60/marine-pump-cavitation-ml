@@ -97,7 +97,7 @@ You are free to:
 Under the following conditions:
 - The original copyright notice and license must be included in all copies or substantial portions of the software
 - The software is provided “as is”, without warranty of any kind.
-- 
+  
 See the full license text in the [LICENSE](LICENSE) file.
 
 
