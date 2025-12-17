@@ -120,10 +120,10 @@ See the full license text in the [LICENSE](LICENSE) file.
    - [x] Base 50Hz motor vibration
    - [x] Add harmonics (100Hz, 150Hz)
    - [x] Add random noise (0.02 amplitude)
-- [ ] add_cavitation_effects(signal, severity='mild')
-   - [ ] High frequency component (5000Hz)
-   - [ ] Random bursts (bubble collapse)
-   - [ ] Amplitude modulation
+- [x] add_cavitation_effects(signal, severity='mild')
+   - [x] High frequency component (5000Hz)
+   - [x] Random bursts (bubble collapse)
+   - [x] Amplitude modulation
 - [ ] add_ship_motion(signal, roll_freq=0.1, pitch_freq=0.15)
    - [ ] Low frequency modulation
    - [ ] Engine load variations (40-100%)
