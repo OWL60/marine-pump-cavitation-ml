@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 from typing import Tuple, Optional
 from matplotlib import pyplot as plt
-from scipy import signal
+from scipy import signal 
+from utils import log
 
 class MarinePumpVibrationDataGenerator:
     def __init__(self, sample_rate: int = 1000):
@@ -94,7 +95,7 @@ class MarinePumpVibrationDataGenerator:
         start_index = int(cavitation_start * sample_rate)
 
         if start_index >= n_sample:
-            print("Warning: cavitation_start exceeds signal duration. No cavitation effect added.")
+            log.log_warning("cavitation_start exceeds signal duration. No cavitation effect added.")
             start_index = n_sample // 2  # Default to middle of the signal
 
         cav_freq = 8000  # Cavitation frequency component
@@ -199,3 +200,115 @@ class MarinePumpVibrationDataGenerator:
         comparison_metrics['cavitation_kurtosis'] = np.mean(cavitation_signal - np.mean(cavitation_signal))**4 / (np.std(cavitation_signal)**4)
 
         return comparison_metrics
+    
+    def add_ship_motion(self, signal: np.ndarray, marine_condition: str = 'moderate', include_engine_load: bool = True) -> np.ndarray:
+        """
+        Add ship motion effect to the vibration signal.  
+        Args:
+            signal (np.ndarray): Original vibration signal.
+            marine_condition (str): Marine condition ('calm', 'moderate', 'rough').
+            include_engine_load (bool): Whether to include engine load variations.
+        Returns:
+            np.ndarray: Vibration signal with ship motion effect.
+        """
+        log.log_warning("Adding ship motion effect to the signal (sea state: {marine_condition})")
+        
+        motion_signal = signal.copy()
+        n_sample = len(signal)
+        t = np.linspace(0,  n_sample / self.sample_rate, n_sample, endpoint=False)
+
+        roll_params = {
+            'calm': {'freq': 0.05, 'amplitude': 0.05, 'phase': 0.0},
+            'moderate': {'freq': 0.12, 'amplitude': 0.15, 'phase': 0.0},
+            'rough': {'freq': 0.18, 'amplitude': 0.25, 'phase': np.pi / 4},
+            'storm': {'freq': 0.22, 'amplitude': 0.35, 'phase': np.pi / 2}, 
+        }
+        params = roll_params.get(marine_condition, roll_params['moderate'])
+        roll_frequency = params['freq']
+        roll_amplitude = params['amplitude'] 
+        roll_phase = params['phase']
+
+        ship_roll = roll_amplitude * np.sin(2 * np.pi * roll_frequency * t + roll_phase)
+
+        # Pitch motion
+        pitch_params = {
+            'calm': {'freq': 0.07, 'amplitude': 0.03},
+            'moderate': {'freq': 0.10, 'amplitude': 0.10},
+            'rough': {'freq': 0.15, 'amplitude': 0.18},
+            'storm': {'freq': 0.20, 'amplitude': 0.30}, 
+        }
+        params = pitch_params.get(marine_condition, pitch_params['moderate'])
+        pitch_frequency = params['freq']
+        pitch_amplitude = params['amplitude']
+
+        ship_pitch = pitch_amplitude * np.sin(2 * np.pi * pitch_frequency * t + np.pi / 2)
+
+        # heave motion
+        heave_params = {
+            'calm': {'freq': 0.03, 'amplitude': 0.02},
+            'moderate': {'freq': 0.06, 'amplitude': 0.08},
+            'rough': {'freq': 0.09, 'amplitude': 0.12},
+            'storm': {'freq': 0.12, 'amplitude': 0.20}, 
+        }
+        params = heave_params.get(marine_condition, heave_params['moderate'])
+        heave_frequency = params['freq']
+        heave_amplitude = params['amplitude']
+
+        ship_heave = heave_amplitude * np.sin(2 * np.pi * heave_frequency * t + np.pi / 4)
+
+        # Engine load variations if enabled
+        if include_engine_load:
+            # Engine load based on ship operation, Manouvering, cruising, full speed
+            load_profile = np.ones_like(signal)
+            phase_duration = n_sample // 4
+            load_profile[:phase_duration] *= np.uniform.random(0.6, 0.8) # Manoeuvering
+            load_profile[phase_duration:2*phase_duration] *= np.uniform.random(0.8, 1.0) # Cruising
+            load_profile[2*phase_duration:3*phase_duration] *= np.uniform.random(1.0, 1.2) # Full speed
+            load_profile[3*phase_duration:] *= np.uniform.random(0.7, 0.9) # Slowing down
+
+            #Add some random load fluctuations
+            load_fluctuations = 0.05 * np.random.randn(n_sample)
+            load_profile *= (1 + 0.1 * load_fluctuations) 
+
+            load_profile = np.clip(load_profile, 0.3, 1.0) # Limit load profile
+        else:
+            load_profile = np.ones_like(signal) # No load variations
+
+
+        # Seawater turbulence effect
+        density_factor = 1.025  # Density of seawater
+
+        # Sea temperature varies between 0 and 30 degrees Celsius
+        temp_variation = 15 + 10 * np.sin(2 * np.pi * 0.01 * t)  # Slow variation over time
+        temperature_factor = 1 + (temp_variation - 15) * 0.01  # Simplified effect
+
+        # Bubble/Cavitation noise from seawater
+        bubble_noise = 0.02 * np.random.normal(size=signal.shape) * density_factor * temperature_factor
+
+        # Combine all effects
+        motion_effect = 1 + ship_roll + ship_pitch + ship_heave
+        motion_signal = motion_signal * motion_effect * load_profile + bubble_noise 
+
+
+        log.log_info(" Marine Conditions Applied:")
+        log.log_info(" • Ship rolling: {roll_frequency:.2f} Hz, amplitude: {roll_amplitude:.2f}")
+        log.log_info(" • Ship pitching: {pitch_frequency:.2f} Hz, amplitude: {pitch_amplitude:.2f}")
+        log.log_info(" • Ship heaving: {heave_frequency:.2f} Hz, amplitude: {heave_amplitude:.2f}")
+        
+        if include_engine_load:
+            avg_load = np.mean(load_profile)
+            min_load = np.min(load_profile)
+            max_load = np.max(load_profile)
+            log.log_info(" • Engine load: {min_load:.1f}-{max_load:.1f} (avg: {avg_load:.2f})")
+        
+        # Calculate modulation depth
+        modulation_depth = np.max(motion_effect) - np.min(motion_effect)
+        log.log_info(" • Motion modulation: {modulation_depth:.2f}")
+        
+        # Calculate signal change
+        rms_original = np.sqrt(np.mean(signal**2))
+        rms_marine = np.sqrt(np.mean(motion_signal**2))
+        log.log_info(" • RMS change: {rms_marine/rms_original:.2f} x")
+        
+        return motion_signal
+    

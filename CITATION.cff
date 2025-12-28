@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this code or methodology in your research, please cite it as follows."
-title: "AI-Based Vibration Analysis for Early Fault Detection in Marine Diesel Engines"
+title: "Physics-Informed Explainable ML for Marine Pump Cavitation Prediction"
 type: software
 authors:
   - family-names: Hassan
