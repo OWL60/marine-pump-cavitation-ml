@@ -9,6 +9,10 @@
 
 ---
 
+
+![Pump vibration](images/normal_pump_vibration.png)
+
+
 ## Research Overview
 
 This repository contains the complete implementation of a novel **physics-informed explainable machine learning framework** for early cavitation risk prediction in marine centrifugal pumps. The research addresses critical gaps in current condition monitoring systems by:
