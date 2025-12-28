@@ -39,7 +39,7 @@ def test_cavitation_effect() -> None:
 
     severities = ('mild', 'moderate', 'severe')
     for severity in severities:
-        cav_signal = generator.add_cavitation_effect(normal_signal, sample_rate=1000, duration=2.0, severity='moderate', cavitation_start=1.0)
+        cav_signal = generator.add_cavitation_effect(normal_signal, sample_rate=1000, severity='moderate', cavitation_start=1.0)
         generator.compare_signals(normal_signal, cav_signal, cavitation_start=1.0)
 
         test_data = pd.DataFrame({

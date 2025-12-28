@@ -124,9 +124,9 @@ See the full license text in the [LICENSE](LICENSE) file.
    - [x] High frequency component (5000Hz)
    - [x] Random bursts (bubble collapse)
    - [x] Amplitude modulation
-- [ ] add_ship_motion(signal, roll_freq=0.1, pitch_freq=0.15)
-   - [ ] Low frequency modulation
-   - [ ] Engine load variations (40-100%)
+- [x] add_ship_motion(signal, roll_freq=0.1, pitch_freq=0.15)
+   - [x] Low frequency modulation
+   - [x] Engine load variations (40-100%)
 - [ ] generate_dataset(n_samples=1000)
     - [ ] 50% normal, 50% cavitation
     - [ ] Save to data/ folder

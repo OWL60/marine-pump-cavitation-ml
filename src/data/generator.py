@@ -78,7 +78,7 @@ class MarinePumpVibrationDataGenerator:
         plt.savefig("normal_pump_vibration.png", bbox_inches='tight')
         plt.show()
 
-    def add_cavitation_effect(self, signal: np.ndarray, sample_rate, duration, severity: float = 'mild', cavitation_start: float = 0.5) -> np.ndarray:
+    def add_cavitation_effect(self, signal: np.ndarray, sample_rate, severity: float = 'mild', cavitation_start: float = 0.5) -> np.ndarray:
         """
         Add cavitation effect to the vibration signal.  
         Args:
@@ -95,7 +95,7 @@ class MarinePumpVibrationDataGenerator:
         start_index = int(cavitation_start * sample_rate)
 
         if start_index >= n_sample:
-            log.log_warning("cavitation_start exceeds signal duration. No cavitation effect added.")
+            log.log_warning(f"cavitation_start exceeds signal duration. No cavitation effect added.")
             start_index = n_sample // 2  # Default to middle of the signal
 
         cav_freq = 8000  # Cavitation frequency component
@@ -104,7 +104,7 @@ class MarinePumpVibrationDataGenerator:
             'moderate': 0.6,
             'severe': 1.0
         }
-        hf_noise = np.zeros_like(n_sample)
+        hf_noise = np.zeros(n_sample)
         hf_noise[start_index:] = 0.3 * np.sin(2 * np.pi * cav_freq * time_to_take_sample[start_index:])
         hf_noise *= severity_levels.get(severity, 0.5)
 
@@ -119,7 +119,7 @@ class MarinePumpVibrationDataGenerator:
         num_spikes = int(spikes_per_second.get(severity, 10) * duration_after_cavitation)
         
         if num_spikes > 0:
-            spike_indices = np.random.choice(np.range(start_index, n_sample), size=min(num_spikes, n_sample - start_index), replace=False)
+            spike_indices = np.random.choice(np.arange(start_index, n_sample), size=min(num_spikes, n_sample - start_index), replace=False)
             spike_amplitudes = {
                 'mild': 0.5,
                 'moderate': 1.0,
@@ -157,13 +157,13 @@ class MarinePumpVibrationDataGenerator:
         fft_cav = np.abs(np.fft.fft(cavitation_signal[start_index: start_index + 1000]))
         freq = np.fft.fftfreq(1000, 1/self.sample_rate)
 
-        hf_mask = np.abs(freq) >= 5000 & np.abs(freq) <= 10000
+        hf_mask = (np.abs(freq) >= 5000) & (np.abs(freq) <= 10000)
         hf_energy = np.sum(fft_cav[hf_mask])
-        print(f"RMS before cavitation: {rms_before:.3f}, RMS after cavitation: {rms_after:.3f}, High-frequency energy: {hf_energy:.3f}")
+        log.log_info(f"RMS before cavitation: {rms_before:.3f}, RMS after cavitation: {rms_after:.3f}, High-frequency energy: {hf_energy:.3f}")
 
         lf_mask = np.abs(freq) <= 100
         lf_energy = np.sum(fft_cav[lf_mask])
-        print(f"Low-frequency energy: {lf_energy:.3f}")
+        log.log_info(f"Low-frequency energy: {lf_energy:.3f}")
 
         return cavitation_signal
     
@@ -211,7 +211,7 @@ class MarinePumpVibrationDataGenerator:
         Returns:
             np.ndarray: Vibration signal with ship motion effect.
         """
-        log.log_warning("Adding ship motion effect to the signal (sea state: {marine_condition})")
+        log.log_warning(f"Adding ship motion effect to the signal (sea state: {marine_condition})")
         
         motion_signal = signal.copy()
         n_sample = len(signal)
@@ -291,24 +291,86 @@ class MarinePumpVibrationDataGenerator:
 
 
         log.log_info(" Marine Conditions Applied:")
-        log.log_info(" • Ship rolling: {roll_frequency:.2f} Hz, amplitude: {roll_amplitude:.2f}")
-        log.log_info(" • Ship pitching: {pitch_frequency:.2f} Hz, amplitude: {pitch_amplitude:.2f}")
-        log.log_info(" • Ship heaving: {heave_frequency:.2f} Hz, amplitude: {heave_amplitude:.2f}")
+        log.log_info(f" • Ship rolling: {roll_frequency:.2f} Hz, amplitude: {roll_amplitude:.2f}")
+        log.log_info(f" • Ship pitching: {pitch_frequency:.2f} Hz, amplitude: {pitch_amplitude:.2f}")
+        log.log_info(f" • Ship heaving: {heave_frequency:.2f} Hz, amplitude: {heave_amplitude:.2f}")
         
         if include_engine_load:
             avg_load = np.mean(load_profile)
             min_load = np.min(load_profile)
             max_load = np.max(load_profile)
-            log.log_info(" • Engine load: {min_load:.1f}-{max_load:.1f} (avg: {avg_load:.2f})")
+            log.log_info(f" • Engine load: {min_load:.1f}-{max_load:.1f} (avg: {avg_load:.2f})")
         
         # Calculate modulation depth
         modulation_depth = np.max(motion_effect) - np.min(motion_effect)
-        log.log_info(" • Motion modulation: {modulation_depth:.2f}")
+        log.log_info(f" • Motion modulation: {modulation_depth:.2f}")
         
         # Calculate signal change
         rms_original = np.sqrt(np.mean(signal**2))
         rms_marine = np.sqrt(np.mean(motion_signal**2))
-        log.log_info(" • RMS change: {rms_marine/rms_original:.2f} x")
-        
+        log.log_info(f" • RMS change: {rms_marine/rms_original:.2f} x")
         return motion_signal
+    
+    def comapare_land_v_marine(self, land_signal: np.ndarray, marine_signal: np.ndarray) -> dict:
+        """
+        Compare land-based and marine-based vibration signals using statistical metrics.  
+        Args:
+            land_signal (np.ndarray): Land-based vibration signal.
+            marine_signal (np.ndarray): Marine-based vibration signal.
+        Returns:
+            dict: Dictionary containing comparison metrics. 
+        """
+        stats = {
+            'land_rms': np.sqrt(np.mean(land_signal**2)),
+            'marine_rms': np.sqrt(np.mean(marine_signal**2)),
+            'land_std': np.std(land_signal),
+            'marine_std': np.std(marine_signal),
+            'land_kurtosis': np.mean(land_signal - np.mean(land_signal))**4 / (np.std(land_signal)**4),
+            'marine_kurtosis': np.mean(marine_signal - np.mean(marine_signal))**4 / (np.std(marine_signal)**4),
+            'variation_coefficient': np.std(marine_signal) / (np.mean(marine_signal) + 1e-6),
+        }
+
+        # Calculate PSD (Power Spectral Density) using Welch's method
+        f_land, pxx_land = signal.welch(land_signal, fs=self.sample_rate, nperseg=1024)
+        f_marine, pxx_marine = signal.welch(marine_signal, fs=self.sample_rate, nperseg=1024)
+
+        # mask for frequencies <= 2.0 Hz
+        low_freq_mask = f_land <= 2.0
+        stats['land_low_freq_energy'] = np.sum(pxx_land[low_freq_mask])
+        stats['marine_low_freq_energy'] = np.sum(pxx_marine[low_freq_mask])
+        stats['low_freq_energy_ratio'] = stats['marine_low_freq_energy'] / (stats['land_low_freq_energy'] + 1e-6)   
+
+        # log results with calculated stats
+        log.log_info(f"Comparison between Land-based and Marine-based Vibration Signals:")
+        log.log_info(f" • RMS: Land = {stats['land_rms']:.3f}, Marine = {stats['marine_rms']:.3f}, Ratio = {stats['marine_rms']/stats['land_rms']:.2f} x")
+        log.log_info(f" • Std Dev: Land = {stats['land_std']:.3f}, Marine = {stats['marine_std']:.3f}, Ratio = {stats['marine_std']/stats['land_std']:.2f} x")
+        log.log_info(f" • Kurtosis: Land = {stats['land_kurtosis']:.3f}, Marine = {stats['marine_kurtosis']:.3f}")
+        log.log_info(f" • Low-Freq Energy (<=2.0 Hz): Land = {stats['land_low_freq_energy']:.3f}, Marine = {stats['marine_low_freq_energy']:.3f}, Ratio = {stats['low_freq_energy_ratio']:.2f} x")       
+        
+        return stats
+    
+
+    def generate_marine_scenarios(self, base_signal: np.ndarray, scenarios: list) -> dict:
+        """
+        Generate multiple marine scenarios from a base vibration signal.  
+        Args:
+            signal (np.ndarray): Base vibration signal.
+            scenarios (list): List of scenario configurations.
+        Returns:
+            dict: Dictionary of generated scenario signals.
+        """
+        scenarios = ['calm', 'moderate', 'rough', 'storm']
+        marine_signals = {}
+        for scenario in scenarios:
+            marine_signal = self.add_ship_motion(signal=base_signal, marine_condition=scenario, include_engine_load=True)
+            marine_signals[scenario] = marine_signal
+            log.log_info("Generated marine scenario: {scenario}")
+
+        # calculate statistics for each scenario
+        for scenario, signal in marine_signals.items():
+            rms = np.sqrt(np.mean(signal**2))
+            std = np.std(signal)
+            log.log_info(f" • Scenario: {scenario} | RMS: {rms:.3f} | Std Dev: {std:.3f}")
+
+        return marine_signals
     
