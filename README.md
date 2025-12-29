@@ -10,7 +10,7 @@
 ---
 
 
-![Pump vibration](images/normal_pump_vibration.png)
+![Pump vibration](images/pump_vibration.png)
 
 
 ## Research Overview
