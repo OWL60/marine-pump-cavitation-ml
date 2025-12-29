@@ -5,9 +5,7 @@ Generates synthetic vibration data for marine pumps
 
 import numpy as np
 import pandas as pd
-from typing import Tuple, Optional
-from matplotlib import pyplot as plt
-from scipy import signal 
+from scipy import signal
 from utils import log
 
 class MarinePumpVibrationDataGenerator:
@@ -37,46 +35,35 @@ class MarinePumpVibrationDataGenerator:
 
         return signal
     
-
     def save_signal_to_csv(self, signal: np.ndarray, filename: str = 'normal_vibration.csv') -> None:
         """
             Save the generated vibration signal to a CSV file.  
-
-            
             Args:
                 signal (np.ndarray): Vibration signal to save.
                 filename (str): Name of the CSV file.
         """
-
         df = pd.DataFrame({
                 'time': np.arange(len(signal)) / self.sample_rate,
                 'vibration': signal,
             })
         df.to_csv(filename, index=False)
 
-
-    def plot_signal(self, signal: np.ndarray, title: str = 'Normal pump vibration') -> None:
+    def plot_signal(self, axes: np.ndarray, signal: np.ndarray, pos: int, title: str = 'Normal pump vibration') -> None:
         """
-        Plot the generated vibration signal.  
+        Plot the vibration signal on given axes.
         Args:
+            axes (np.ndarray): Array of matplotlib axes to plot on.
             signal (np.ndarray): Vibration signal to plot.
+            pos (int): Position index in the axes array.
             title (str): Title of the plot.
+        Returns:
+            None
         """
-
-        plot_sample = min(1000, len(signal))
-        plt.figure(figsize=(10, 4))
-        plt.plot(signal[:plot_sample],  'b-', label='Vibration Signal', linewidth=1)
-        plt.title(title)
-        plt.xlabel('sample number')
-        plt.ylabel('Vibration Amplitude')
-        plt.grid(True, alpha=0.3)
-
-        plt.figtext(0.5, -0.05, 
-            f"Length: {len(signal)} samples | Sample rate: 10 kHz | RMS: {np.sqrt(np.mean(signal**2)):.3f}",
-            ha='center', fontsize=9)
-        
-        plt.savefig("normal_pump_vibration.png", bbox_inches='tight')
-        plt.show()
+        axes[pos].plot(signal, 'b-', label='Vibration Signal', linewidth=1)  
+        axes[pos].set_title(title)
+        axes[pos].set_xlabel('sample number')
+        axes[pos].set_ylabel('Vibration Amplitude')
+        axes[pos].grid(True, alpha=0.3)
 
     def add_cavitation_effect(self, signal: np.ndarray, sample_rate, severity: float = 'mild', cavitation_start: float = 0.5) -> np.ndarray:
         """
@@ -95,7 +82,7 @@ class MarinePumpVibrationDataGenerator:
         start_index = int(cavitation_start * sample_rate)
 
         if start_index >= n_sample:
-            log.log_warning(f"cavitation_start exceeds signal duration. No cavitation effect added.")
+            log.log_warning("cavitation_start exceeds signal duration. No cavitation effect added.")
             start_index = n_sample // 2  # Default to middle of the signal
 
         cav_freq = 8000  # Cavitation frequency component
@@ -341,7 +328,7 @@ class MarinePumpVibrationDataGenerator:
         stats['low_freq_energy_ratio'] = stats['marine_low_freq_energy'] / (stats['land_low_freq_energy'] + 1e-6)   
 
         # log results with calculated stats
-        log.log_info(f"Comparison between Land-based and Marine-based Vibration Signals:")
+        log.log_info(" Comparison between Land-based and Marine-based Vibration Signals:")
         log.log_info(f" • RMS: Land = {stats['land_rms']:.3f}, Marine = {stats['marine_rms']:.3f}, Ratio = {stats['marine_rms']/stats['land_rms']:.2f} x")
         log.log_info(f" • Std Dev: Land = {stats['land_std']:.3f}, Marine = {stats['marine_std']:.3f}, Ratio = {stats['marine_std']/stats['land_std']:.2f} x")
         log.log_info(f" • Kurtosis: Land = {stats['land_kurtosis']:.3f}, Marine = {stats['marine_kurtosis']:.3f}")
@@ -349,7 +336,6 @@ class MarinePumpVibrationDataGenerator:
         
         return stats
     
-
     def generate_marine_scenarios(self, base_signal: np.ndarray, scenarios: list) -> dict:
         """
         Generate multiple marine scenarios from a base vibration signal.  
