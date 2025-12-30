@@ -15,7 +15,38 @@
 
 ## Research Overview
 
-This repository contains the complete implementation of a novel **physics-informed explainable machine learning framework** for early cavitation risk prediction in marine centrifugal pumps. The research addresses critical gaps in current condition monitoring systems by:
+This repository contains the complete implementation of a novel **physics-informed explainable machine learning framework** for early cavitation risk prediction in marine centrifugal pumps. 
+The goal is to provide early warnings by learning from both simulated and real-world physical characteristics of cavitation.
+
+**What Does it mean by  Physics-Informed  Explainable Machine Learning in This Context?**<br>
+Our research title describes an advanced machine learning approach that blends three key concepts:<br>
+
+1. **Physics-Informed**<br>
+This means the machine learning model isn’t just learning from data, it also incorporates known physical laws or equations related to cavitation in centrifugal pumps.<br>
+- In our case, these could be equations from fluid dynamics (e.g., Bernoulli’s principle, pump performance curves, NPSH equations), acoustic/vibration physics (how bubble collapse generates specific vibration signatures), or mechanical models of the pump.
+- The model might use these physics equations to guide training, generate synthetic data, or as part of the loss function to ensure predictions are physically plausible.
+- Benefits: improves accuracy with less data, ensures predictions make physical sense, and can extrapolate better to unseen conditions.<br>
+2. **Explainable Machine Learning (XAI)**<br>
+This means the model is designed to provide understandable reasons for its predictions.
+- Since cavitation prediction in a safety-critical marine system requires trust and diagnosis, you wouldn’t want a pure “black-box” model.
+- Techniques like SHAP, LIME, or attention mechanisms might be used to highlight which vibration frequencies or time features signal cavitation risk.
+- This helps engineers to understand why the model predicts risk, e.g., “increased amplitude at 5 kHz combined with reduced 1x RPM harmonic indicates early cavitation.”<br>
+3. **Combined in our research**<br>
+Our framework:<br>
+- Uses vibration data (common for cavitation detection, because collapsing vapor bubbles cause high-frequency vibrations).
+- Integrates physics knowledge (maybe equations relating NPSH, flow rate, and vibration patterns) to inform feature selection, data augmentation, or model architecture.
+- Applies explainable ML to make the risk prediction interpretable to marine engineers.
+
+---
+
+### Why this combination is powerful for early cavitation prediction**
+
+1. **Early detection** — Physical models help identify subtle signatures before severe damage.<br>
+2. **Data efficiency** — Physics reduces need for massive labeled failure datasets.<br>
+3. **Trust and adoption** — Explainability helps engineers act on predictions confidently.<br>
+4. **Marine context** — Centrifugal pumps in ships are critical and everywhere; failure risks safety, hence this robust approach.<br>
+
+Also, the research addresses critical gaps in current condition monitoring systems by:
 
 **Bridging physics models with data-driven ML** for more accurate predictions<br>
 **Providing human-interpretable explanations** using SHAP and LIME for engineer trust<br>
