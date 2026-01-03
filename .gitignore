@@ -208,3 +208,7 @@ __marimo__/
 
 # other files/folders
 *.csv
+\metadata
+\processed
+\raw
+\images
