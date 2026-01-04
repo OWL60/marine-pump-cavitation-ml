@@ -161,7 +161,6 @@ class MarinePumpVibrationDataGenerator:
         hf_ratio = hf_energy / (lf_energy + 1e-10) 
         log.log_info(f"Low-frequency energy: {lf_energy:.3f}")
         log.log_info(f"High frequency ratio: {hf_ratio:.3f}")
-        
 
         return cavitation_signal
     

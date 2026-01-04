@@ -1,11 +1,10 @@
 """
 Time-domain feature extraction for pump vibration signal
 """
-
-import numpy as np
-from scipy import stats
 from typing import Union, Dict, List
 import warnings
+import numpy as np
+from scipy import stats
 from sklearn.ensemble import RandomForestClassifier
 from utils import log
 
@@ -95,6 +94,7 @@ def extract_time_features(signal: np.ndarray) -> Dict[str, float]:
         features['CoV'] = 0.0
     return features
 
+
 def batch_extract(signal: Union[List[np.ndarray], np.ndarray], verbose: bool = True) -> np.ndarray:
     """
     Extract features from different signals
@@ -135,6 +135,7 @@ def batch_extract(signal: Union[List[np.ndarray], np.ndarray], verbose: bool = T
         log.log_info(f"Feature matrix shape: ({len(all_features)}, {len(feature_names)})")
     return np.array(all_features)
 
+
 def get_feature_names() -> List[str]:
     """
     get all feature names in consistent order.
@@ -172,7 +173,11 @@ def normalize_features(features: np.ndarray, method: str) -> np.ndarray:
     log.log_debug(f"Unknown normalization method: {method}")
     raise ValueError(f"Unknown normalization method: {method}")
 
+
 def feature_important_analysis(features: np.ndarray, label: np.ndarray, feature_names: List[str] = None) -> Dict:
+    """
+    Extract the important features.
+    """
     if feature_names is None:
         feature_names = [f"feature_{i}" for i in range(features.shape[1])]
 
@@ -195,5 +200,4 @@ def feature_important_analysis(features: np.ndarray, label: np.ndarray, feature_
         result['sorted_importances'].append(importances[idx])
         result['top_features'].append((feature_names[idx], importances[idx]))
         log.log_info(f"{i+1:2d}. {feature_names[idx]:<20} : {importances[idx]:.4f}")
-    
     return result
