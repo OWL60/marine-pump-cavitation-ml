@@ -14,5 +14,8 @@ keywords:
   - Condition-Based Maintenance
   - Fault Detection
 
+repository-code: https://github.com/OWL60/marine-pump-cavitation-ml
 version: 1.0.0
+date-released: 2024-12-20
 license: MIT
+
