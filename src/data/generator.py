@@ -2,10 +2,13 @@
 Marine pump vibration data generator
 Generates synthetic vibration data for marine pumps
 '''
+import os
+from datetime import datetime
 import numpy as np
 import pandas as pd
 from scipy import signal
 from utils import log
+from ..features.time_features import  batch_extract
 
 class MarinePumpVibrationDataGenerator:
     """
@@ -28,6 +31,11 @@ class MarinePumpVibrationDataGenerator:
             np.ndarray: Generated vibration signal.
 
         """
+        if rpm < 0:
+            raise ValueError("rpm must be positive")
+        if duration < 1:
+            raise ValueError("duration must be positive")
+        
         t = np.linspace(0, duration, int(self.sample_rate * duration), endpoint=False)
         shaft_frequency = rpm / 60  # Convert RPM to Hz
         signals = 0.5 * np.sin(2 * np.pi * shaft_frequency * t)  # Base vibration signal
@@ -430,8 +438,6 @@ class MarinePumpVibrationDataGenerator:
 
         log.log_info(f"Extracting features from {len(X_raw)} signals...")
 
-        from ..features.time_features import extract_time_features, batch_extract
-
         X_features = batch_extract(X_raw)
 
         log.log_info(f"signal shape: {X_raw.shape}")
@@ -446,10 +452,6 @@ class MarinePumpVibrationDataGenerator:
         return X_raw, X_features, y, metadata
     
     def _save_dataset(self, X_raw: np.ndarray, X_features: np.ndarray, y: np.ndarray, metadata: list) -> None:
-
-        import os
-        from datetime import datetime
-
         os.makedirs("data/raw", exist_ok=True)
         os.makedirs("data/processed", exist_ok=True)
         os.makedirs("data/metadata", exist_ok=True)
@@ -474,7 +476,7 @@ class MarinePumpVibrationDataGenerator:
             for name in feature_names:
                 f.write(f"{name}\n")
 
-        log.log_info(f"Dataset saved to disk:")
+        log.log_info("Dataset saved to disk:")
         log.log_info(f"Raw signals: data/raw/X_raw_{timestamp}.npy")
         log.log_info(f"Features: data/processed/X_features_{timestamp}.npy")
         log.log_info(f"Labels: data/raw/y_{timestamp}.npy")
@@ -485,17 +487,17 @@ class MarinePumpVibrationDataGenerator:
 
         metadata_df = pd.DataFrame(metadata)
 
-        log.log_info(f"{'='*60}")
-        log.log_info(f"DATASET SUMMARY")
-        log.log_info(f"{'='*60}")
+        log.log_info("{'='*60}")
+        log.log_info("DATASET SUMMARY")
+        log.log_info("{'='*60}")
         
-        log.log_info(f"Basic Statistics:")
+        log.log_info("Basic Statistics:")
         log.log_info(f"Total samples: {len(X_raw)}")
         log.log_info(f"Normal samples: {sum(y==0)} ({sum(y==0)/len(y)*100:.1f}%)")
         log.log_info(f"Cavitation samples: {sum(y==1)} ({sum(y==1)/len(y)*100:.1f}%)")
         log.log_info(f"Signal length: {X_raw.shape[1]} samples ({X_raw.shape[1]/self.sample_rate:.1f}s)")
         
-        log.log_info(f"Cavitation Severity Distribution:")
+        log.log_info("Cavitation Severity Distribution:")
         cavitation_meta = metadata_df[metadata_df['cavitation_severity'] != 'none']
         if len(cavitation_meta) > 0:
             severity_counts = cavitation_meta['cavitation_severity'].value_counts()
@@ -503,21 +505,21 @@ class MarinePumpVibrationDataGenerator:
                 percentage = count / len(cavitation_meta) * 100
                 log.log_info(f"{severity.capitalize()}: {count} samples ({percentage:.1f}%)")
         
-        log.log_info(f"Marine Conditions Distribution:")
+        log.log_info("Marine Conditions Distribution:")
         marine_counts = metadata_df['marine_condition'].value_counts()
         for condition, count in marine_counts.items():
             percentage = count / len(metadata_df) * 100
             log.log_info(f"{condition.capitalize()}: {count} samples ({percentage:.1f}%)")
         
-        log.log_info(f"RPM Distribution:")
+        log.log_info("RPM Distribution:")
         log.log_info(f"Min RPM: {metadata_df['rpm'].min()}")
         log.log_info(f"Max RPM: {metadata_df['rpm'].max()}")
         log.log_info(f"Mean RPM: {metadata_df['rpm'].mean():.0f}")
         log.log_info(f"Std RPM: {metadata_df['rpm'].std():.0f}")
         
-        log.log_info(f"Signal Statistics:")
+        log.log_info("Signal Statistics:")
         log.log_info(f"Mean RMS: {metadata_df['signal_rms'].mean():.4f}")
         log.log_info(f"Mean Peak: {metadata_df['signal_peak'].mean():.4f}")
         log.log_info(f"Signal range: [{X_raw.min():.3f}, {X_raw.max():.3f}]")
         
-        log.log_info(f"Dataset ready for ML training!")
+        log.log_info("Dataset ready for ML training!")

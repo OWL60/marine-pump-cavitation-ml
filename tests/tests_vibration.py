@@ -2,12 +2,7 @@
 Tests for vibration generator engine
 """
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-from utils import log
-from src.data.generator import MarinePumpVibrationDataGenerator
-from src.features import time_features
+import pytest
 
 def test_add_cavitation_effect(baseline_vibration) -> None:
     """
@@ -61,8 +56,84 @@ def test_compare_signals(baseline_vibration) -> None:
     assert np.abs(stats['cavitation_kurtosis'] - stats['normal_kurtosis']) < 1e-6
 
 
-def test_compare_land_v_marine(baseline_vibration) -> None:
+def test_generate_dataset_small(baseline_vibration) -> None:
     """
-    Test compare_land_v_marine method
+    Perfom test for small dataset
     """
-    pass
+    _, generator_obj, _ = baseline_vibration
+    X_raw, X_features, y, metadata = generator_obj.generate_dataset(n_samples =20, include_marine_conditions=True, save_to_disk=True)
+
+    assert X_raw.shape[0] == 20
+    assert X_features.shape[0] == 20
+    assert len(y) == 20
+    assert len(metadata) == 20
+    assert np.sum(y==0) == 10
+    assert np.sum(y==1) == 10
+
+    for meta in metadata:
+        assert 'sample_id' in meta
+        assert 'rpm' in meta
+        assert 'signal_peak' in meta
+        assert 'signal_rms' in meta
+        assert 'marine_condition' in meta
+
+
+@pytest.mark.slow
+def test_generate_dataset_large(baseline_vibration):
+    """
+    Test generate dataset function for large dataset
+    """
+    _, generator_obj, _ = baseline_vibration
+    X_raw, X_features, _, metadata = generator_obj.generate_dataset(n_samples=1000, include_marine_conditions=True, save_to_disk=False)
+    
+    assert X_raw.shape == (1000, 100000)
+    assert X_features.shape[0] == 1000
+    assert X_features.shape[1] > 5
+
+    rpm = [meta['rpm'] for meta in metadata]
+    assert len(set(rpm)) > 1
+    conditions = [meta['marine_condition'] for meta in metadata]
+    assert len(set(conditions)) > 1
+
+
+def test_generate_dataset_land_only(baseline_vibration):
+    """
+    test generation of dataset for land
+    """
+    _, generator_obj, _ = baseline_vibration
+    _, _, _, metadata = generator_obj.generate_dataset(n_samples=10, include_marine_conditions=False, save_to_disk=False)
+    for meta in metadata:
+        assert meta['marine_condition'] == 'land'
+        assert not meta['is_marine']
+
+
+def test_error_handling(baseline_vibration):
+    """
+    Test for error handling in case of invalid argument passed to vibration generator
+    """
+    _, generator_obj, _ = baseline_vibration
+    with pytest.raises(Exception):
+        generator_obj.generate_vibration_signal(rpm=-1000, duration=1.0)
+    with pytest.raises(Exception):
+        generator_obj.generate_vibration_signal(rpm=1750, duration=0)
+    with pytest.raises(Exception):
+        generator_obj.generate_vibration_signal(rpm=1750, duration=-1.0)
+
+
+def test_generate_marine_scenarios(baseline_vibration):
+    """
+    Test for generate marine scenario method
+    """
+    scenarios = ['mild', 'moderate', 'severe']
+    normal_vibaration_signal, generator_obj, _ = baseline_vibration
+    expected_scenarios = generator_obj.generate_marine_scenarios(normal_vibaration_signal)
+    
+    for scenario in expected_scenarios:
+        assert scenario in scenarios
+        assert isinstance(expected_scenarios[scenario], np.ndarray)
+        assert len(expected_scenarios[scenario]) == len(normal_vibaration_signal)
+
+        diff_scenarios_signals = list(expected_scenarios.values())
+        for index, back_scenario_signal in enumerate(diff_scenarios_signals):
+            for scenario_signal in enumerate(diff_scenarios_signals, start=index+1):
+                assert not np.array_equal(back_scenario_signal, scenario_signal)
