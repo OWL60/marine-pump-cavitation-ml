@@ -14,10 +14,6 @@ def run_tests():
     """
     Tests configurations for marine pump cavitation ML.
     """
-    log.log_info('='*60)
-    log.log_info('Running test(s) for cavitation detection in pumps using ML')
-    log.log_info('='*60)
-
     project_root = os.path.dirname(os.path.abspath(__file__))
     os.chdir(project_root)
     cmd = [sys.executable, '-m', 'pytest', project_root, '-v', '--tb=short', '--disable-warnings', 
@@ -28,20 +24,16 @@ def run_tests():
         cmd.extend(['--cov=src', '--cov-report=term-missing', '--cov-report=html'])
     
     if '--slow' in sys.argv:
-        cmd.append('--slow')
+        cmd.append('-m')
+        cmd.append('slow')
     else:
         cmd.append('-m')
         cmd.append('not slow')
     try:
         results = subprocess.run(cmd, check=False)
         if results.returncode == 0:
-            log.log_success('='*60)
-            log.log_success("All tests passed!")
-            log.log_success('='*60)
+            pass
         else:
-            log.log_failure('='*60)
-            log.log_failure("Some of tests failed!")
-            log.log_failure('='*60)
             return results.returncode
     except Exception as e:
         log.log_error(f'fail to run tests {e}')
@@ -52,9 +44,15 @@ def run_specific_test(test_file, test_name=None):
     """
     Function for running the specific test 
     """
-    cmd = [sys.executable, '-m', 'pytest', f'tests/{test_file}', '-v', '--tb=short', '--disable-warnings']
+    cmd = [sys.executable, '-m', 'pytest', f'{test_file}', '-v', '--tb=short', '--disable-warnings']
     if test_name:
         cmd.append(f"-k{test_name}")
+    if '--slow' in sys.argv:
+        cmd.append('-m')
+        cmd.append('slow')
+    else:
+        cmd.append('-m')
+        cmd.append('not slow')
     try:
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError:
@@ -68,8 +66,8 @@ if __name__ == '__main__':
     parser.add_argument('--data', action='store_true', help='Run test for vibration data generator')
     parser.add_argument('--features', action='store_true', help='Run test for features extraction')
     parser.add_argument('--all', action='store_true', help='Run all tests [default]')
-    parser.add_argument('--coverage', action='store_true')
-    parser.add_argument('--slow', action='store_true')
+    parser.add_argument('--coverage', action='store_true', help='Generate coverage report')
+    parser.add_argument('--slow', action='store_true', help='Including the slow tests')
     args = parser.parse_args()
 
     if args.file and args.function:
