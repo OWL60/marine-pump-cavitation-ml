@@ -41,7 +41,6 @@ def baseline_vibration() -> list:
     return signal, generator, baseline_stats
 
 
-@pytest.fixture(params=['mild', 'moderate', 'severe'])
 @pytest.fixture(param=['mild', 'moderate', 'severe'])
 def cavitation_vibration(baseline_vibration, request) -> list:
     """
