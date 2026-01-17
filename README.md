@@ -162,16 +162,16 @@ See the full license text in the [LICENSE](LICENSE) file.
 - [x] add_ship_motion(signal, roll_freq=0.1, pitch_freq=0.15)
    - [x] Low frequency modulation
    - [x] Engine load variations (40-100%)
-- [ ] generate_dataset(n_samples=1000)
-    - [ ] 50% normal, 50% cavitation
-    - [ ] Save to data/ folder
+- [x] generate_dataset(n_samples=1000)
+    - [x] 50% normal, 50% cavitation
+    - [x] Save to data/ folder
 **src/features/time_features.py**
-- [ ] extract_time_features(signal)
-   - [ ] Statistical: mean, std, variance
-   - [ ] Shape: RMS, peak, crest_factor
-   - [ ] Advanced: kurtosis, skewness
-   - [ ] Others: shape_factor, impulse_factor
-- [ ] batch_extract(signals) → np.array
+- [x] extract_time_features(signal)
+   - [x] Statistical: mean, std, variance
+   - [x] Shape: RMS, peak, crest_factor
+   - [x] Advanced: kurtosis, skewness
+   - [x] Others: shape_factor, impulse_factor
+- [x] batch_extract(signals) → np.array
 
 
 ### ML Models
