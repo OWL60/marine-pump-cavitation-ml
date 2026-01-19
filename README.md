@@ -121,7 +121,7 @@ This is a Master's thesis repository, but contributions are welcome for:
 - Documentation improvements
 - Translation of explanations to different languages
 
-See the full contributing text in the [CONTRIBUTING.md](CONTRIBUTING) file.
+See the full contributing text in the [CONTRIBUTING](CONTRIBUTING.md) file.
 
 ---
 
