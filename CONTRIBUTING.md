@@ -83,8 +83,8 @@ All tests must pass!
 
 ## Code Style
 - Follow PEP8
-- Use miningful variable names
-- Clear conventions (branch naming, commit meanigful messages)
+- Use meaningful variable names
+- Clear conventions (branch naming, commit meaningful messages)
 - Add docstring to all functions and files
 - Keep code modular
 - Comment complex math/logic clearly
@@ -126,7 +126,7 @@ When adding models
      - Fork -> Clone -> Create Branch -> Develop -> Test -> Pull request.
 
 
-## Follow [Conventional Commits](https://conventionalcommits.org):
+## Follow [Conventional Commits](https://conventionalcommits.org) Examples:
 - feat: New feature
 - fix: Bug fix
 - docs: Documentation changes
