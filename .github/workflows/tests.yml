@@ -8,49 +8,50 @@ on:
 
 jobs:
   test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        python-version: [3.9, 3.10]
     runs-on: ${{ matrix.os }}
-      strategy:
-        fail-fast: false
-        matrix:
-          os: [windows-latest, ubuntu-latest]
-          python-version: [3.9, 3.10]
-      steps:
-      - name: check out repository
-      - uses: actions/checkout@v4
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-      - name: setup Python ${{ matrix.python-version }}
+      - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
-          with:
-            python-version: ${{ matrix.python-version }}
+        with:
+          python-version: ${{ matrix.python-version }}
 
       - name: Scan for secrets
         uses: zricethezav/gitleaks-action@v2
 
-      - name: Install dependencies and run checks
-          if: runner.os != "Windows"
-          run: |
-            python -m venv venv
-            source venv/bin/activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
-            pip install pytest pytest-cov black isort bandit safety
-            black --check src/ tests/
-            isort --check-only src/ tests/
-            bandit -r src/ tests/
-            safety check src/ tests/
-            cd tests
-            python main.py --slow
+      - name: Install dependencies and run checks (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov black isort bandit safety
+          black --check src/ tests/
+          isort --check-only src/ tests/
+          bandit -r src/ tests/
+          safety check src/ tests/
+          cd tests
+          python main.py --slow
 
-          if: runner.os == "Windows"
-          run: |
-            python -m venv venv
-            .\venv\scripts\activate
-            python -m pip install --upgrade pip
-            pip install -r requirements.txt
-            pip install pytest pytest-cov black isort bandit safety
-            black --check src/ tests/
-            safety check src/ tests/
-            bandit -r src/ tests/
-            isort --check-only src/ tests/
-            cd tests
-            python main.py --slow
+      - name: Install dependencies and run checks (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          python -m venv venv
+          .\venv\Scripts\activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov black isort bandit safety
+          black --check src/ tests/
+          isort --check-only src/ tests/
+          bandit -r src/ tests/
+          safety check src/ tests/
+          cd tests
+          python main.py --slow
