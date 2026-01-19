@@ -2,6 +2,7 @@
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![.github/workflows/tests.yml](https://github.com/OWL60/marine-pump-cavitation-ml/actions/workflows/tests.yml/badge.svg)](https://github.com/OWL60/marine-pump-cavitation-ml/actions/workflows/tests.yml)
 <!-- [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX) -->
 <!-- [![arXiv](https://img.shields.io/badge/arXiv-XXXX.XXXXX-b31b1b.svg)](https://arxiv.org/abs/XXXX.XXXXX) -->
 
@@ -12,6 +13,7 @@
 
 ![Pump vibration](images/pump_vibration.png)
 
+---
 
 ## Research Overview
 
@@ -31,15 +33,17 @@ This means the model is designed to provide understandable reasons for its predi
 - Since cavitation prediction in a safety-critical marine system requires trust and diagnosis, you wouldn’t want a pure “black-box” model.
 - Techniques like SHAP, LIME, or attention mechanisms might be used to highlight which vibration frequencies or time features signal cavitation risk.
 - This helps engineers to understand why the model predicts risk, e.g., “increased amplitude at 5 kHz combined with reduced 1x RPM harmonic indicates early cavitation.”<br>
-3. **Combined in our research**<br>
+
+
+**Combined in our research**<br>
 Our framework:<br>
 - Uses vibration data (common for cavitation detection, because collapsing vapor bubbles cause high-frequency vibrations).
 - Integrates physics knowledge (maybe equations relating NPSH, flow rate, and vibration patterns) to inform feature selection, data augmentation, or model architecture.
-- Applies explainable ML to make the risk prediction interpretable to marine engineers.
+- Applies explainable ML to make the risk prediction interpretable to marine engineers.<br>
 
 ---
 
-### Why this combination is powerful for early cavitation prediction**
+### Why this combination is powerful for early cavitation prediction
 
 1. **Early detection** — Physical models help identify subtle signatures before severe damage.<br>
 2. **Data efficiency** — Physics reduces need for massive labeled failure datasets.<br>
@@ -53,12 +57,6 @@ Also, the research addresses critical gaps in current condition monitoring syste
 **Predicting cavitation risk 24-48 hours earlier** than threshold-based methods<br>
 **Accounting for marine-specific conditions** (ship motion, variable loads, seawater properties)
 
-<!-- <p align="center">
-  <img src="results/figures/framework_overview.png" alt="Framework Overview" width="700">
-  <br>
-  <em>Physics-Informed Explainable ML Framework Architecture</em>
-</p> -->
-
 ---
 
 ## Table of Contents
@@ -66,8 +64,8 @@ Also, the research addresses critical gaps in current condition monitoring syste
 - [Research Gap](#-research-gap)
 - [Methodology](#-methodology)
 - [Key Features](#-key-features)
-- [Contributing](#-Contributing)
-- [License](#-license)
+- [Contributing](CONTRIBUTING.md)
+- [License](LICENSE)
 
 ---
 
@@ -103,13 +101,15 @@ def calculate_physics_features(vibration_signal, pump_rpm, seawater_density):
 ---
 ## key-features
 
-| Feature                     | Description                                           | Impact                                         |
-|----------------------------|-------------------------------------------------------|------------------------------------------------|
-| Physics-ML Fusion           | Integrates pump equations as ML constraints            | 15% accuracy improvement vs. pure ML           |
-| Marine-Specific Explanations| SHAP plots translated to engineering recommendations   | 80% higher engineer trust score                |
-| Early Risk Prediction       | Predicts cavitation 24–48 hours before damage          | 65% reduction in unplanned downtime            |
-| Variable Condition Robustness| Accounts for ship motion and load changes              | Maintains >90% accuracy in sea conditions      |
-| Real Data Integration       | Uses actual ship maintenance records                   | Validated with 45+ marine pump dataset          |
+| Feature                     | Description                                           | 
+|----------------------------|--------------------------------------------------------|
+| Physics-ML Fusion           | Integrates pump equations as ML constraints           |
+| Marine-Specific Explanations| SHAP plots translated to engineering recommendations  |
+| Early Risk Prediction       | Predicts cavitation 24–48 hours before damage         |
+| Variable Condition Robustness| Accounts for ship motion and load changes            |
+| Real Data Integration       | Uses actual ship maintenance records                  |
+| Multiple Model Architecture | CNN, LSTM and hybrid models for time series cavitation data |
+| Visualization               | Visualization of cavitation prediction results        |
 
 ---
 
@@ -120,6 +120,8 @@ This is a Master's thesis repository, but contributions are welcome for:
 - New physics feature implementations
 - Documentation improvements
 - Translation of explanations to different languages
+
+See the full contributing text in the [CONTRIBUTING](CONTRIBUTING.md) file.
 
 ---
 
@@ -151,104 +153,102 @@ See the full license text in the [LICENSE](LICENSE) file.
 
 ### Core Foundation
 **src/data/generator.py**
-- [x] generate_normal_vibration(rpm=1750, duration=1.0)
+- [x] generate_normal_vibration
    - [x] Base 50Hz motor vibration
-   - [x] Add harmonics (100Hz, 150Hz)
-   - [x] Add random noise (0.02 amplitude)
-- [x] add_cavitation_effects(signal, severity='mild')
-   - [x] High frequency component (5000Hz)
-   - [x] Random bursts (bubble collapse)
+   - [x] Add harmonics 
+   - [x] Add random noise 
+- [x] add_cavitation_effects
+   - [x] High frequency component 
+   - [x] Random bursts
    - [x] Amplitude modulation
-- [x] add_ship_motion(signal, roll_freq=0.1, pitch_freq=0.15)
+- [x] add_ship_motion
    - [x] Low frequency modulation
-   - [x] Engine load variations (40-100%)
-- [x] generate_dataset(n_samples=1000)
+   - [x] Engine load variations
+- [x] generate_dataset
     - [x] 50% normal, 50% cavitation
     - [x] Save to data/ folder
 **src/features/time_features.py**
-- [x] extract_time_features(signal)
+- [x] extract_time_features
    - [x] Statistical: mean, std, variance
    - [x] Shape: RMS, peak, crest_factor
    - [x] Advanced: kurtosis, skewness
    - [x] Others: shape_factor, impulse_factor
-- [x] batch_extract(signals) → np.array
+- [x] batch_extract
 
 
 ### ML Models
 
 **src/models/traditional_ml.py**
 - [ ] class TraditionalML
-   - [ ] __init__(): dict of models
+   - [ ] dict of models
       - [ ] RandomForestClassifier
       - [ ] SVC (Support Vector Machine)
       - [ ] XGBClassifier
       - [ ] LogisticRegression (baseline)
-   - [ ] train_all(X_train, y_train)
-   - [ ] predict_all(X_test)
-   - [ ] get_scores(X_test, y_test)
-- [ ] train_test_split_wrapper(X, y, test_size=0.2)
-- [ ] save_models(models_dict, path='results/models/')
+   - [ ] train_all
+   - [ ] predict_all
+   - [ ] get_scores
+- [ ] train_test_split_wrapper
+- [ ] save_models
       
 **src/models/deep_learning.py**
-- [ ] build_cnn(input_shape=(1000, 1))
-   - [ ] Conv1D layers (32, 64 filters)
+- [ ] build_cnn
+   - [ ] Conv1D layers
    - [ ] MaxPooling1D
    - [ ] Dropout for regularization
-   - [ ] Dense output layer (sigmoid)
-- [ ] build_lstm(input_shape=(100, 10))
+   - [ ] Dense output layer
+- [ ] build_lstm
    - [ ] LSTM layers (50 units)
    - [ ] Return sequences
    - [ ] TimeDistributed layers
-- [ ] build_cnn_lstm(input_shape)
+- [ ] build_cnn_lstm
     - [ ] CNN for feature extraction
     - [ ] LSTM for temporal patterns
 
 
 ### Physics & Explainability 
 **src/features/physics_features.py**
-- [ ] calculate_cavitation_number(flow_params)
-- [ ] calculate_npsh_margin(pump_params)
-- [ ] estimate_reynolds_number(signal, params)
-- [ ] energy_ratio_high_low(signal, fs=10000)
+- [ ] calculate_cavitation_number
+- [ ] calculate_npsh_margin
+- [ ] estimate_reynolds_number
+- [ ] energy_ratio_high_low
     - [ ] Low freq energy (0-100Hz)
     - [ ] High freq energy (1000+ Hz)
           
 **src/explainability/shap_explainer.py**
 - [ ] class SHAPExplainer
-   - [ ] __init__(model, X_train)
-   - [ ] explain(X_explain)
-   - [ ] plot_summary(feature_names)
-   - [ ] plot_force(instance_idx)
-- [ ] install_shap() → pip install shap
-- [ ] save_shap_plots(shap_values, path='results/shap/')
+   - [ ] explain
+   - [ ] plot_summary
+   - [ ] plot_force
+- [ ] install_shap
+- [ ] save_shap_plots
 
 **src/explainability/lime_explainer.py**
 - [ ] class LIMEExplainer
-   - [ ] __init__(model, feature_names)
-   - [ ] explain_instance(instance)
-   - [ ] plot_explanation(explanation)
-- [ ] generate_text_explanation(features, prediction)
+   - [ ] explain_instance
+   - [ ] plot_explanation
+- [ ] generate_text_explanation
 
 
 ### Visualization
 **src/visualization/signals.py**
-- [ ] plot_vibration_comparison(normal, cavitation)
-   - [ ] Time domain plot (first 200 samples)
-   - [ ] Color coding (blue=normal, red=cavitation)
+- [ ] plot_vibration_comparison
+   - [ ] Time domain plot
+   - [ ] Color coding
    - [ ] Labels and titles
-- [ ] plot_spectrogram(signal, fs=10000)
-- [ ] plot_feature_distribution(features_df, label_col='target')
+- [ ] plot_spectrogram
+- [ ] plot_feature_distribution
 
 **src/visualization/performance.py**
-- [ ] plot_confusion_matrix(y_true, y_pred, model_name)
-- [ ] plot_roc_curve(y_true, y_proba, model_name)
-- [ ] plot_precision_recall(y_true, y_proba, model_name)
-- [ ] plot_model_comparison(results_df)
+- [ ] plot_confusion_matrix
+- [ ] plot_roc_curve
+- [ ] plot_precision_recall
+- [ ] plot_model_comparison
     - [ ] Bar chart of accuracies
     - [ ] Error bars if available
 
 **src/visualization/dashboard.py**
-- [ ] def create_dashboard()
+- [ ] create_dashboard()
    - [ ] Streamlit setup
    - [ ] File upload widget
    - [ ] Signal visualization
@@ -260,15 +260,14 @@ See the full license text in the [LICENSE](LICENSE) file.
 
 ### Evaluation & Main Pipeline
 **src/evaluation/metrics.py**
-- [ ] calculate_all_metrics(y_true, y_pred, y_proba=None)
+- [ ] calculate_all_metrics
    - [ ] Standard: accuracy, precision, recall, f1
    - [ ] Advanced: AUC-ROC, AUC-PR
    - [ ] Early detection: lead_time, false_alarm_rate
-- [ ] cross_validate_model(model, X, y, cv=5)
-- [ ] statistical_significance_test(model1_scores, model2_scores)
+- [ ] cross_validate_model
+- [ ] statistical_significance_test
 
 **main.py**
-- [ ] def main()
    - [ ] Load config from config.yaml
    - [ ] Generate/load data
    - [ ] Extract features
@@ -276,27 +275,26 @@ See the full license text in the [LICENSE](LICENSE) file.
    - [ ] Evaluate and compare
    - [ ] Generate visualizations
 - [ ] command line arguments
-   - [ ] --generate_data (bool)
-   - [ ] --train_models (bool)
-   - [ ] --create_plots (bool)
+   - [ ] generate_data
+   - [ ] train_models
+   - [ ] create_plots
 - [ ] Logging to file and console
 
 
 ### Configuration & Utils
 **config.yaml**
 - [ ] data parameters
-   - [ ] sample_rate: 10000
-   - [ ] signal_duration: 1.0
-   - [ ] train_test_split: 0.2
+   - [ ] sample_rate
+   - [ ] signal_duration
+   - [ ] train_test_split
 - [ ] ml parameters
-   - [ ] random_forest: {n_estimators: 100}
-   - [ ] cnn: {epochs: 50, batch_size: 32}
+   - [ ] random_forest
+   - [ ] cnn
 - [ ] paths
     - [ ] data: 'data/'
     - [ ] results: 'results/'
 
 **src/utils/config.py**
 - [ ] class Config
-   - [ ] load_yaml(path='config.yaml')
-   - [ ] get(key, default=None)
-- [ ] validate_config(config_dict)
+   - [ ] load_yaml
+- [ ] validate_config
