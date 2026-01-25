@@ -182,7 +182,9 @@ When adding models
    - Write code
    - Add tests for new functionality
    - Update documentation if necessary
+   - Run `pre-commit run --all-files` and it must passes
    - Ensure all tests pass
+   - Pull request.
 
 
 2. **Pull Request Process:**
@@ -192,7 +194,7 @@ When adding models
     ```
     - Commit changes clearly:
     ```bash
-    git commit -m "feat: Add cavitation frequency feature extraction"
+    git commit -m "feat: Add cavitation frequency features extraction"
     ```
     - Push branch:
     ```bash
