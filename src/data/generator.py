@@ -186,10 +186,17 @@ class MarinePumpVibrationDataGenerator:
         rms_after = np.sqrt(np.mean(cavitation_signal[start_index:] ** 2))
 
         # Frequency analysis of cavitation portion
-        fft_cav = np.abs(
-            np.fft.fft(cavitation_signal[start_index : start_index + 1000])
-        )  # Energy (magnitude)
-        freq = np.fft.fftfreq(1000, 1 / self.sample_rate)
+        cav_signal = cavitation_signal[start_index : start_index + 1000]
+
+        cav_signal = np.asarray(cav_signal, dtype=np.float64)
+        cav_signal -= np.mean(cav_signal)  # Remove DC components
+        cav_signal_size = cav_signal.size
+
+        window = np.hanning(cav_signal_size)
+        cav_signal *= window
+
+        fft_cav = np.abs(np.fft.rfft(cav_signal))  # Energy (magnitude)
+        freq = np.fft.rfftfreq(cav_signal_size, 1 / self.sample_rate)
         log.log_debug(f"freq_max = {np.max(freq)}")
 
         hf_mask = (np.abs(freq) >= 5000) & (np.abs(freq) <= 10000)
