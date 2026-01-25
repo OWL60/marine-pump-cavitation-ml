@@ -25,7 +25,7 @@ Our research title describes an advanced machine learning approach that blends t
 1. **Physics-Informed**<br>
 This means the machine learning model isn’t just learning from data, it also incorporates known physical laws or equations related to cavitation in centrifugal pumps.<br>
 - In our case, these could be equations from fluid dynamics (e.g., Bernoulli’s principle, pump performance curves, NPSH equations), acoustic/vibration physics (how bubble collapse generates specific vibration signatures), or mechanical models of the pump.
-- The model might use these physics equations to guide training, generate synthetic data, or as part of the loss function to ensur the predictions are physically plausible.
+- The model might use these physics equations to guide training, generate synthetic data, or as part of the loss function to ensure the predictions are physically plausible.
 - Benefits: improves accuracy with less data, ensures predictions make physical sense, and can extrapolate better to unseen conditions.<br>
 2. **Explainable Machine Learning (XAI)**<br>
 This means the model is designed to provide understandable reasons for its predictions.
