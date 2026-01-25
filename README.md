@@ -3,8 +3,7 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![.github/workflows/tests.yml](https://github.com/OWL60/marine-pump-cavitation-ml/actions/workflows/tests.yml/badge.svg)](https://github.com/OWL60/marine-pump-cavitation-ml/actions/workflows/tests.yml)
-<!-- [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX) -->
-<!-- [![arXiv](https://img.shields.io/badge/arXiv-XXXX.XXXXX-b31b1b.svg)](https://arxiv.org/abs/XXXX.XXXXX) -->
+
 
 **Master's Thesis Research: A Physics-Informed and Explainable Machine Learning Framework for Early Cavitation Risk Prediction in Marine Centrifugal Pumps Using Vibration Data**
 
