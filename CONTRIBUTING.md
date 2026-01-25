@@ -64,6 +64,84 @@ cd MARINE-PUMP-CAVITATION-ML
 pip install -r requirements.txt
 ```
 
+
+## Pre-commit Hooks (Code Quality & Security)
+
+**This project uses **pre-commit hooks** to automatically check code quality, formatting, and security before each commit.**
+
+Pre-commit helps us:
+- Keep code style consistent  
+- Catch simple bugs early  
+- Detect security issues (Bandit scan)  
+- Ensure clean and reproducible research code  
+
+---
+
+### Install Pre-commit
+
+After installing the project dependencies, install pre-commit:
+
+```bash
+pip install pre-commit
+```
+
+### Activate Hooks (ONE TIME SETUP)
+
+From the project root directory, run:
+
+```bash
+pre-commit install
+```
+
+This connects the hooks to Git so they run automatically before every commit.
+
+
+### Run Hooks Manually (Recommended Before Pushing)
+
+To check **all files**:
+
+```bash
+pre-commit run --all-files
+```
+
+To check only **changed files**:
+
+```bash
+pre-commit run
+```
+
+---
+
+### If a Hook Fails
+
+Pre-commit may:
+
+* Automatically reformat code
+* Report issues that must be fixed
+
+If that happens:
+
+1. Fix the reported issues
+2. Stage the changes again
+
+   ```bash
+   git add .
+   ```
+3. Commit again
+
+---
+
+### Security Scanning
+
+We use **Bandit** to scan for Python security issues.
+
+If Bandit reports a problem:
+
+* Fix insecure code where necessary
+* If it is a false positive related to research or simulation logic, explain it in your Pull Request
+
+---
+
 ## Running Tests
 ``` bash
 cd MARINE-PUMP-CAVITATION-ML\tests 
@@ -134,6 +212,16 @@ When adding models
 - refactor: Code changes that neither fix bugs nor add features
 - chore: Maintanance task
 - style: Formatting, missing semicolons.
+
+## Contributor Checklist Before Pull Request
+### Before opening a PR, please ensure:
+- [x] Code runs without errors
+- [x] All tests pass
+- [x] pre-commit run --all-files passes
+- [x] Documentation updated if needed
+
+All code must pass pre-commit checks before it can be merged.
+
 ---
 
 ## Important Notes
