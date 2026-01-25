@@ -1,0 +1,42 @@
+repos:
+  # Code formatting
+  - repo: https://github.com/psf/black
+    rev: 26.1.0
+    hooks:
+      - id: black
+  
+  # Imports sorting
+  - repo: https://github.com/PyCQA/isort
+    rev: 7.0.0
+    hooks:
+    - id: isort
+  
+  # Security scan for python code
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.9.3
+    hooks:
+      - id: bandit
+        args:
+          - "-c"
+          - ".bandit.yaml"
+          - "--skip"
+          - "B101, B404, B603"
+        additional_dependencies:
+          - pbr
+          - stevedore
+  
+  # Dependency vulnerability scan
+ 
+  
+  # Secret keys scan
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
+  
+  # Ensure commit message follow commit convention
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.12.1
+    hooks:
+     - id: commitizen
+       stages: [commit-msg]

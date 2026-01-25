@@ -1,0 +1,9 @@
+exclude_dirs:
+  - tests/
+  - test/
+  - venv/
+  - build/
+  - dist/
+  - benchmarks/
+  - .*
+  
