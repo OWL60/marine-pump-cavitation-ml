@@ -186,22 +186,31 @@ class MarinePumpVibrationDataGenerator:
         rms_after = np.sqrt(np.mean(cavitation_signal[start_index:] ** 2))
 
         # Frequency analysis of cavitation portion
-        fft_cav = np.abs(
-            np.fft.fft(cavitation_signal[start_index : start_index + 1000])
-        )  # Energy (magnitude)
-        freq = np.fft.fftfreq(1000, 1 / self.sample_rate)
+        cav_portion = cavitation_signal[start_index : start_index + 1000]
+        cav_portion -= np.mean(cav_portion)  # remove DC component
+
+        window = np.hanning(len(cav_portion))
+        cav_portion = cav_portion * window
+        len_cav_signal = len(cav_portion)
+
+        fft_cav = np.abs(np.fft.fft(cav_portion))  # magnitude
+        freq = np.fft.fftfreq(len_cav_signal, 1 / self.sample_rate)
+
         log.log_debug(f"freq_max = {np.max(freq)}")
 
-        hf_mask = (np.abs(freq) >= 5000) & (np.abs(freq) <= 10000)
-        hf_energy = np.sum(fft_cav[hf_mask])
+        f_max = self.sample_rate / 2
+        hf_mask = (np.abs(freq) >= 0.4 * f_max) & (np.abs(freq) <= f_max)
+        hf_energy = np.sum(fft_cav[hf_mask] ** 2)
         log.log_info(
             f"RMS before cavitation: {rms_before:.3f}, RMS after cavitation: {rms_after:.3f}"
         )
         log.log_info(f"High-frequency energy: {hf_energy:.3f}")
 
         lf_mask = np.abs(freq) <= 100
-        lf_energy = np.sum(fft_cav[lf_mask])
-        hf_ratio = hf_energy / (lf_energy + 1e-10)
+        lf_energy = np.sum(fft_cav[lf_mask] ** 2)
+        hf_ratio = np.log10(
+            (hf_energy + 1e-10) / (lf_energy + 1e-10)
+        )  # avoid div by zero and make it stable
         log.log_info(f"Low-frequency energy: {lf_energy:.3f}")
         log.log_info(f"High frequency ratio: {hf_ratio:.3f}")
 
