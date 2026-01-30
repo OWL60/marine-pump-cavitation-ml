@@ -102,29 +102,6 @@ The frequency-domain plot shows the power distribution across frequencies. Peaks
 
 ---
 
-### Feature Extraction
-
-From the signal, we extract features such as:
-
-**For Time-domain features**
-- mean
-- std
-- variance
-- peak_to_peak
-- peak
-- rms
-
-**For frequency-domain features**
-- Peak frequency (`peak_frequency_hz`)  
-- Spectral centroid (`spectral_centroid_hz`)  
-- Total power (`total_power`)  
-- RMS frequency (`rms_frequency_hz`)  
-- Energy ratios in frequency bands (`energy_ratio_low`, `energy_ratio_high`, …)  
-
-These features will be used for **machine learning models** to predict anomalies like cavitation.
-
----
-
 ## Methodology
 
 For a detailed explanation of the research methodology behind this project, including synthetic vibration signal generation, feature extraction, and model training, please see the [Methodology](METHODOLOGY.md) file.
