@@ -208,10 +208,8 @@ __marimo__/
 
 # other files/folders
 *.csv
-*.png
 *.json
 \metadata
 \processed
 \raw
-\images
 \htmlcov

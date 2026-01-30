@@ -20,6 +20,7 @@ def extract_time_features(signal: np.ndarray) -> Dict[str, float]:
     Extract comprehensive time-domain features extraction for pump vibration signal
     """
     signal = np.asarray(signal, dtype=np.float64)
+    signal -= np.mean(signal)
     cleaning_mask = np.isfinite(signal)
     signal = signal[cleaning_mask]
     abs_signal = np.abs(signal)
@@ -37,17 +38,17 @@ def extract_time_features(signal: np.ndarray) -> Dict[str, float]:
     features["mean_abs"] = np.mean(abs_signal)
 
     if features["rms"] > EPS:
-        features["crest_factor"] = features["peak"] / features["rms"]
+        features["crest_factor"] = features["peak"] / features["rms"] + EPS
     else:
         features["crest_factor"] = 0.0
 
     if features["mean_abs"] > EPS:
-        features["shape_factor"] = features["rms"] / features["mean_abs"]
+        features["shape_factor"] = features["rms"] / features["mean_abs"] + EPS
     else:
         features["shape_factor"] = 0.0
 
     if features["mean_abs"] > EPS:
-        features["impulsive_factor"] = features["peak"] / features["mean_abs"]
+        features["impulsive_factor"] = features["peak"] / features["mean_abs"] + EPS
     else:
         features["impulsive_factor"] = 0.0
 
@@ -75,7 +76,7 @@ def extract_time_features(signal: np.ndarray) -> Dict[str, float]:
     features["slope_changes"] = slope_changes / (len(signal) + EPS)
 
     if features["rms"] > EPS:
-        features["peak_to_rms"] = features["peak"] / features["rms"]
+        features["peak_to_rms"] = features["peak"] / features["rms"] + EPS
     else:
         features["peak_to_rms"] = 0.0
 
@@ -95,7 +96,7 @@ def extract_time_features(signal: np.ndarray) -> Dict[str, float]:
     features["IQR"] = q75 - q25
     # Coefficient of Variation, CoV
     if np.abs(features["mean"]) > EPS:
-        features["CoV"] = features["std"] / np.abs(features["mean"])
+        features["CoV"] = features["std"] / np.abs(features["mean"]) + EPS
     else:
         features["CoV"] = 0.0
     return features

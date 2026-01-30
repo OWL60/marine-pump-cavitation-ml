@@ -56,7 +56,7 @@ def test_extract_time_features_edge_cases():
     constant_signal = np.ones(100)
     features = time_features.extract_time_features(constant_signal)
     assert features["std"] == 0
-    assert features["crest_factor"] == 1.0
+    assert features["crest_factor"] == 0
 
     zero_signal = np.zeros(100)
     features = time_features.extract_time_features(zero_signal)
