@@ -9,11 +9,6 @@
 
 ---
 
-
-![Pump vibration](images/pump_vibration.png)
-
----
-
 ## Research Overview
 
 This repository contains the complete implementation of a novel **physics-informed explainable machine learning framework** for early cavitation risk prediction in marine centrifugal pumps. 
@@ -61,7 +56,7 @@ Also, the research addresses critical gaps in current condition monitoring syste
 ## Table of Contents
 
 - [Research Gap](#-research-gap)
-- [Methodology](#-methodology)
+- [Methodology](METHODOLOGY.md)
 - [Key Features](#-key-features)
 - [Contributing](CONTRIBUTING.md)
 - [License](LICENSE)
@@ -81,21 +76,58 @@ Current approaches to marine pump cavitation monitoring face four critical limit
 
 ---
 
+### Marine Pump Vibration Analysis
+
+This repository contains tools for analyzing vibration signals from marine pumps.  
+We extract both **time-domain** and **frequency-domain** features to predict cavitation in marine centrifugal pumps.
+
+### Vibration Signal Overview
+
+Below is an example vibration signal collected from a pump.
+
+### Time Domain Signal
+
+The time-domain plot shows how the signal amplitude varies over time. Spikes may indicate impacts or cavitation events.
+
+
+![Time Domain Signal](images/pump_vibration.png)
+
+---
+### Frequency Domain (Power Spectrum)
+
+
+The frequency-domain plot shows the power distribution across frequencies. Peaks correspond to dominant vibration frequencies, such as shaft rotation and harmonics.
+
+![Frequency Domain / Power Spectrum](images/frequency_spectrum.png)
+
+---
+
+### Feature Extraction
+
+From the signal, we extract features such as:
+
+**For Time-domain features**
+- mean
+- std
+- variance
+- peak_to_peak
+- peak
+- rms
+
+**For frequency-domain features**
+- Peak frequency (`peak_frequency_hz`)  
+- Spectral centroid (`spectral_centroid_hz`)  
+- Total power (`total_power`)  
+- RMS frequency (`rms_frequency_hz`)  
+- Energy ratios in frequency bands (`energy_ratio_low`, `energy_ratio_high`, …)  
+
+These features will be used for **machine learning models** to predict anomalies like cavitation.
+
+---
+
 ## Methodology
 
-### 1. Physics-Informed Feature Engineering
-```python
-# Example: Incorporating pump physics into ML features
-def calculate_physics_features(vibration_signal, pump_rpm, seawater_density):
-    """Extract physics-guided features"""
-    features = {
-        'npsh_margin': calculate_npsh_margin(pump_params),
-        'reynolds_effect': estimate_turbulence_level(vibration),
-        'cavitation_number': compute_cavitation_number(flow_params),
-        'energy_ratio_actual_vs_expected': compare_with_physics_model()
-    }
-    return features
-```
+For a detailed explanation of the research methodology behind this project, including synthetic vibration signal generation, feature extraction, and model training, please see the [Methodology](METHODOLOGY.md) file.
 
 ---
 ## key-features
