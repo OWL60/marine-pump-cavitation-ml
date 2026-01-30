@@ -78,12 +78,12 @@ Current approaches to marine pump cavitation monitoring face four critical limit
 
 ### Marine Pump Vibration Analysis
 
-This repository contains tools for analyzing vibration signals from marine pumps.  
+We analyze vibration signals from marine pumps.  
 We extract both **time-domain** and **frequency-domain** features to predict cavitation in marine centrifugal pumps.
 
 ### Vibration Signal Overview
 
-Below is an example vibration signal collected from a pump.
+Below is an example synthetic centrifugal pump vibration signal generated.
 
 ### Time Domain Signal
 
