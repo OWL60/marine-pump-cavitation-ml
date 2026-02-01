@@ -12,7 +12,8 @@
 ## Research Overview
 
 This repository contains the complete implementation of a novel **physics-informed explainable machine learning framework** for early cavitation risk prediction in marine centrifugal pumps. 
-The goal is to provide early warnings by learning from both simulated and real-world physical characteristics of cavitation.
+The goal is to provide early warnings by learning from both simulated and real-world[^1]physical characteristics of cavitation.
+[^1]: For now we only use synthetic data.
 
 **What Does it mean by  Physics-Informed  Explainable Machine Learning in This Context?**<br>
 Our research title describes an advanced machine learning approach that blends three key concepts:<br>
