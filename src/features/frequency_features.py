@@ -1,11 +1,16 @@
 """Module for computing frequency domain features from signals."""
 
 import warnings
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.signal import welch
+from sklearn import feature_selection as fs
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
+
+from utils import log
 
 EPS = np.finfo(np.float64).eps
 __all__ = [
@@ -419,3 +424,197 @@ def plot_frequency_spectrum_example(
         print(f"Plot saved to {save_path}")
 
     plt.show()
+
+
+def normalize_features(
+    x: np.ndarray, method: str, return_scaler: bool = False
+) -> Union[np.ndarray, Tuple[np.ndarray, any]]:
+    """
+    Normalize feature matrix.
+    """
+    if np.any(x) == 0:
+        raise ValueError("Feature matrix contains all zero values, cannot normalize.")
+    if np.any(np.isnan(x)):
+        raise ValueError("Feature matrix contains NaN values, cannot normalize.")
+    if np.any(np.isinf(x)):
+        raise ValueError("Feature matrix contains Inf values, cannot normalize.")
+
+    x_original = x.copy()
+
+    if method == "standard":
+        scaler = StandardScaler()
+        normalized = scaler.fit_transform(x_original)
+    elif method == "minmax":
+        scaler = MinMaxScaler()
+        normalized = scaler.fit_transform(x_original)
+    elif method == "robust":
+        scaler = RobustScaler()
+        normalized = scaler.fit_transform(x_original)
+
+    elif method == "unit":
+        norms = np.linalg.norm(x_original, axis=0)
+        norms[norms == 0] = 1
+        normalized = x_original / norms
+
+        class DummyScaler:
+            """Dummy scaler for unit normalization."""
+
+            def __init__(self, norms):
+                self.scaler = norms
+
+        scaler = DummyScaler(norms)
+
+    elif method == "log":
+        if np.any(x_original < 0):
+            log.log_warning("Log normalization cannot be applied to negative values.")
+            x_positive = x_original - np.min(x_original) + EPS
+        else:
+            x_positive = x_original
+        normalized = np.log1p(x_positive)
+
+        class DummyScaler:
+            """Dummy scaler for log normalization."""
+
+            def __init__(self):
+                self.scaler = None
+
+        scaler = DummyScaler()
+
+    else:
+        raise ValueError(f"Normalization method '{method}' is not recognized.")
+
+    if return_scaler:
+        return normalized, scaler
+
+    return normalized
+
+
+def feature_importance_analysis(
+    x: np.ndarray,
+    y: np.ndarray,
+    feature_names: Optional[List[str]] = None,
+    method: str = "f-score",
+    top_k: Optional[int] = 10,
+    task: str = "classification",
+    random_state: int = 42,
+) -> Dict[str, Any]:
+    """
+    Analyze feature importance using RandomForestClassifier, RandomForestRegressor
+    """
+    if x.shape[0] != len(y):
+        raise ValueError("Number of samples in X and y must be the same.")
+
+    if feature_names is None:
+        feature_names = [f"feature_{i}" for i in range(x.shape[1])]
+    elif len(feature_names) != x.shape[1]:
+        raise ValueError("Length of feature_names must match number of features in X.")
+
+    # Handle NaN and Inf values
+    if np.any(np.isnan(x)):
+        np.where(np.isnan(x), np.nanmean(x, axis=0), x)
+    if np.any(np.isinf(x)):
+        np.where(np.isinf(x), np.mean(x[np.isfinite(x)], axis=0), x)
+
+    if np.any(np.isnan(y)):
+        np.where(np.isnan(y), np.nanmean(y), y)
+    if np.any(np.isinf(y)):
+        np.where(np.isinf(y), np.mean(y[np.isfinite(y)]), y)
+
+    results: Dict[str, float] = {
+        "feature_names": feature_names,
+        "importance_scores": [],
+        "top_features": [],
+        "ranked_features": [],
+        "selected_features": [],
+        "method": method,
+        "task": task,
+    }
+
+    if method == "f-score":
+        if task == "classification":
+            selector = fs.SelectKBest(score_func=fs.f_classif, k="all")
+        else:
+            selector = fs.SelectKBest(score_func=fs.f_regression, k="all")
+
+        selector.fit(x, y)
+        scores = selector.scores_
+
+    elif method == "mutual_info":
+        if task == "classification":
+            scores = fs.mutual_info_classif(x, y, random_state=random_state)
+        elif task == "regression":
+            scores = fs.mutual_info_regression(x, y, random_state=random_state)
+
+    elif method == "random_forest":
+        if task == "classification":
+            model = RandomForestClassifier(n_estimators=100, random_state=random_state)
+        else:
+            model = RandomForestRegressor(n_estimators=100, random_state=random_state)
+
+        model.fit(x, y)
+        scores = model.feature_importances_
+
+    elif method == "correlation":
+        if task == "classification":
+            if np.unique(y) == 2:
+                corr_coefs = []
+                for i in range(x.shape[1]):
+                    coef = np.corrcoef(x[:, i], y)[0, 1]
+                    corr_coefs.append(abs(coef))
+                scores = np.array(corr_coefs)
+            else:
+                corr_coefs = []
+                for i in range(x.shape[1]):
+                    max_coef = 0
+                    for class_label in np.unique(y):
+                        binary_y = (y == class_label).astype(int)
+                        coef = np.corrcoef(x[:, i], binary_y)[0, 1]
+                        max_coef = max(max_coef, abs(coef))
+                    corr_coefs.append(max_coef)
+                scores = np.array(corr_coefs)
+        else:
+            corr_coefs = []
+            for i in range(x.shape[1]):
+                coef = np.corrcoef(x[:, i], y)[0, 1]
+                corr_coefs.append(abs(coef))
+            scores = np.array(corr_coefs)
+        importance_scores = scores
+
+    elif method == "variance":
+        importance_scores = np.var(x, axis=0)
+    else:
+        raise ValueError(f"Unknown feature importance method: {method}")
+    importance_scores = np.nan_to_num(scores, nan=0.0, posinf=0.0, neginf=0.0)
+    # normalize scores
+    max_score = np.max(importance_scores)
+    if max_score > 0:
+        importance_scores = importance_scores / max_score
+
+    # Rank features
+    ranked_indices = np.argsort(importance_scores)[::-1]
+    ranked_feature_names = [feature_names[i] for i in ranked_indices]
+    ranked_scores = [importance_scores[i] for i in ranked_indices]
+
+    # Select top k features
+    if top_k is not None:
+        top_k = min(top_k, len(feature_names))
+        selected_indices = ranked_indices[:top_k]
+        selected_features = [feature_names[i] for i in selected_indices]
+    else:
+        selected_features = ranked_feature_names
+
+    # Store results
+    results["importance_scores"] = importance_scores.tolist()
+    results["ranked_features"] = ranked_feature_names
+    results["ranked_scores"] = ranked_scores.tolist()
+    results["selected_features"] = selected_features
+
+    # Additional statistics
+    results["summary"] = {
+        "num_features": len(feature_names),
+        "mean_importance": float(np.mean(importance_scores)),
+        "std_importance": float(np.std(importance_scores)),
+        "max_importance": float(np.max(importance_scores)),
+        "min_importance": float(np.min(importance_scores)),
+    }
+    return results
