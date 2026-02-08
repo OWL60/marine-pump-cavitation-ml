@@ -15,7 +15,7 @@ def test_add_cavitation_effect(baseline_vibration) -> None:
     severities = ["mild", "moderate", "severe"]
     for severity in severities:
         cav_signal = generator_obj.add_cavitation_effect(
-            baseline_signal, sample_rate=100000, severity=severity
+            baseline_signal, severity=severity
         )
 
         rms = np.sqrt(np.mean(cav_signal**2))
@@ -60,7 +60,7 @@ def test_compare_signals(baseline_vibration) -> None:
     """
     baseline_signal, generator_obj, _ = baseline_vibration
     cav_signal = generator_obj.add_cavitation_effect(
-        baseline_signal, sample_rate=100000, severity="moderate"
+        baseline_signal, severity="moderate"
     )
     stats = generator_obj.compare_signals(baseline_signal, cav_signal)
 
@@ -106,7 +106,7 @@ def test_generate_dataset_large(baseline_vibration):
         n_samples=1000, include_marine_conditions=True, save_to_disk=False
     )
 
-    assert X_raw.shape == (1000, 100000)
+    assert X_raw.shape == (1000, 10000)
     assert X_features.shape[0] == 1000
     assert X_features.shape[1] > 5
 
@@ -135,11 +135,11 @@ def test_error_handling(baseline_vibration):
     """
     _, generator_obj, _ = baseline_vibration
     with pytest.raises(Exception):
-        generator_obj.generate_vibration_signal(rpm=-1000, duration=1.0)
+        generator_obj.generate_vibration_signal(shaft_freq=-1000)
     with pytest.raises(Exception):
-        generator_obj.generate_vibration_signal(rpm=1750, duration=0)
+        generator_obj.generate_vibration_signal(duration=0)
     with pytest.raises(Exception):
-        generator_obj.generate_vibration_signal(rpm=1750, duration=-1.0)
+        generator_obj.generate_vibration_signal(duration=-1.0)
 
 
 def test_generate_marine_scenarios(baseline_vibration):
