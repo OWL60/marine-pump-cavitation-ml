@@ -10,611 +10,624 @@ from sklearn import feature_selection as fs
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
+from src.data.generator import MarinePumpVibrationDataGenerator
 from utils import log
 
-EPS = np.finfo(np.float64).eps
-__all__ = [
-    "extract_frequency_features",
-    "get_frequency_feature_names",
-    "batch_extract_frequency_features",
-    "plot_frequency_spectrum_example",
-]
 
-
-def _compute_frequency_features(
-    signal: np.ndarray,
-    nperseg: int = 1024,
-    sampling_rate: float = 10000,
-    shaft_freq: float = 1750,
-) -> Dict[str, Union[float, np.ndarray, List[float]]]:
+class FrequencyFeatureExtractor:
     """
-    Compute frequency domain features from a given signal.
-
-    Parameters:
-    signal (array-like): The input signal from which to compute frequency features.
-    sampling_rate (float): The sampling rate of the signal.
-
-    Returns:
-    dict: A dictionary containing frequency domain features.
+    Class for extracting frequency domain features from signals.
     """
-    if len(signal) < nperseg:
-        warnings.warn(f"Signal length {len(signal)} is less than nperseg {nperseg}")
-        nperseg = np.min(256, len(signal) // 2)
 
-    if nperseg < 64:
-        raise ValueError("nperseg is too small for frequency feature extraction.")
+    EPS = np.finfo(np.float64).eps
 
-    freqs, psd = welch(signal, fs=sampling_rate, nperseg=nperseg, scaling="density")
+    def __init__(
+        self,
+        generator: MarinePumpVibrationDataGenerator,
+        nperseg: int = 1024,
+    ):
+        self.generator = generator
+        self.nperseg = nperseg
 
-    # Remove DC component
-    psd: np.ndarray
-    freqs: np.ndarray
-    if freqs[0] == 0:
-        psd = psd[1:]
-        freqs = freqs[1:]
+    def _compute_frequency_features(
+        self, signal: np.ndarray
+    ) -> Dict[str, Union[float, np.ndarray, List[float]]]:
+        """
+        Compute frequency domain features from a given signal.
+        """
+        if len(signal) < self.nperseg:
+            warnings.warn(
+                f"Signal length {len(signal)} is less than nperseg {self.nperseg}"
+            )
+            self.nperseg = np.max(np.min(256, len(signal) // 2), 64)
 
-    total_power: float = np.trapz(psd, freqs)
+        freqs, psd = welch(
+            signal,
+            fs=self.generator.sample_rate,
+            nperseg=self.nperseg,
+            scaling="density",
+        )
 
-    peak_frequency = freqs[np.argmax(psd)]
-    peak_amplitude = np.max(psd)
-    spectral_centroid = (
-        np.trapz(freqs * psd, freqs) / total_power if total_power > 0 else 0.0
-    )
+        # Remove DC component
+        psd: np.ndarray
+        freqs: np.ndarray
+        if len(freqs) > 0 and freqs[0] == 0:
+            psd = psd[1:]
+            freqs = freqs[1:]
 
-    # spectral bandwidth (standard deviation)
-    spectral_bandwidth = (
-        np.sqrt(np.trapz(((freqs - spectral_centroid) ** 2) * psd, freqs) / total_power)
-        if total_power > 0
-        else 0.0
-    )
-    # spectral skewness
-    spectral_skewness = (
-        np.trapz(((freqs - spectral_centroid) ** 3) * psd, freqs)
-        / (spectral_bandwidth**3 * total_power)
-        if spectral_bandwidth > 0 and total_power > 0
-        else 0.0
-    )
-    # spectral kurtosis
-    spectral_kurtosis = (
-        np.trapz(((freqs - spectral_centroid) ** 4) * psd, freqs)
-        / (spectral_bandwidth**4 * total_power)
-        - 3
-        if spectral_bandwidth > 0 and total_power > 0
-        else -3.0
-    )
-    shaft_freq /= 60.0
-    band_definitions: Dict[float, Tuple[float, float]] = {
-        "ultra_low_freq": (0, 0.5 * shaft_freq),
-        "low_freq": (0.5 * shaft_freq, 2 * shaft_freq),
-        "medium_freq": (2 * shaft_freq, 10 * shaft_freq),
-        "high_freq": (10 * shaft_freq, 50 * shaft_freq),
-        "ultra_high_freq": (50 * shaft_freq, sampling_rate / 2),
-    }
-    band_powers: Dict[str, float] = {}
-    for band_name, (f_lower, f_upper) in band_definitions.items():
-        band_mask = (freqs >= f_lower) & (freqs <= f_upper)
-        if np.any(band_mask):
-            band_power = np.trapz(psd[band_mask], freqs[band_mask])
-            band_powers[band_name] = band_power
+        total_power: float = np.trapz(psd, freqs)
+
+        peak_frequency = freqs[np.argmax(psd)]
+        peak_amplitude = np.max(psd)
+        spectral_centroid = (
+            np.trapz(freqs * psd, freqs) / total_power if total_power > 0 else 0.0
+        )
+
+        # spectral bandwidth (standard deviation)
+        spectral_bandwidth = (
+            np.sqrt(
+                np.trapz(((freqs - spectral_centroid) ** 2) * psd, freqs) / total_power
+            )
+            if total_power > 0
+            else 0.0
+        )
+        # spectral skewness
+        spectral_skewness = (
+            np.trapz(((freqs - spectral_centroid) ** 3) * psd, freqs)
+            / (spectral_bandwidth**3 * total_power)
+            if spectral_bandwidth > 0 and total_power > 0
+            else 0.0
+        )
+        # spectral kurtosis
+        spectral_kurtosis = (
+            np.trapz(((freqs - spectral_centroid) ** 4) * psd, freqs)
+            / (spectral_bandwidth**4 * total_power)
+            - 3
+            if spectral_bandwidth > 0 and total_power > 0
+            else -3.0
+        )
+        shaft_freq_hz = self.generator.shaft_freq / 60.0
+        band_definitions: Dict[float, Tuple[float, float]] = {
+            "ultra_low_freq": (0, 0.5 * shaft_freq_hz),
+            "low_freq": (0.5 * shaft_freq_hz, 2 * shaft_freq_hz),
+            "medium_freq": (2 * shaft_freq_hz, 10 * shaft_freq_hz),
+            "high_freq": (10 * shaft_freq_hz, 50 * shaft_freq_hz),
+            "ultra_high_freq": (50 * shaft_freq_hz, self.generator.sample_rate / 2),
+        }
+        band_powers: Dict[str, float] = {}
+        for band_name, (f_lower, f_upper) in band_definitions.items():
+            band_mask = (freqs >= f_lower) & (freqs <= f_upper)
+            if np.any(band_mask):
+                band_power = np.trapz(psd[band_mask], freqs[band_mask])
+                band_powers[band_name] = band_power
+            else:
+                band_powers[band_name] = 0.0
+
+        band_ratios: Dict[str, float] = {}
+        for req_band_name, req_band_power in band_powers.items():
+            if total_power > 0:
+                band_ratios[f"energy_ratio_{req_band_name}"] = (
+                    req_band_power / total_power
+                )
+            else:
+                band_ratios[f"energy_ratio_{req_band_name}"] = 0.0
+
+        if shaft_freq_hz > 0:
+            dominant_ratio: float = peak_frequency / shaft_freq_hz
         else:
-            band_powers[band_name] = 0.0
+            dominant_ratio = 0.0
 
-    band_ratios: Dict[str, float] = {}
-    for req_band_name, req_band_power in band_powers.items():
+        harmonic_ratios: List[float] = []
+        for i in range(1, 6):
+            harmonics_freq: float = i * shaft_freq_hz
+            if harmonics_freq <= freqs[-1]:
+                idx = np.argmin(np.abs(freqs - harmonics_freq))
+                harmonic_power = psd[idx] if idx < len(psd) else 0.0
+                harmonic_ratios.append(
+                    harmonic_power / peak_amplitude if peak_amplitude > 0 else 0.0
+                )
+            else:
+                harmonic_ratios.append(0.0)
+
+        noise_power: float = band_powers.get("ultra_low_freq", 0.0) + band_powers.get(
+            "ultra_high_freq", 0.0
+        )
+        clean_power: float = total_power - noise_power
+        if noise_power > 0:
+            snr_db = 10 * np.log10(
+                max(
+                    clean_power / (noise_power + FrequencyFeatureExtractor.EPS),
+                    FrequencyFeatureExtractor.EPS,
+                )
+            )  # signal-to-noise ratio in dB
+        else:
+            snr_db = 0.0
+
+        cavitation_indicator: float = band_powers.get(
+            "high_freq", 0.0
+        ) + band_powers.get("ultra_high_freq", 0.0)
+
+        rms: float = (
+            np.sqrt(np.trapz(freqs**2 * psd, freqs) / total_power)
+            if total_power > 0
+            else 0.0
+        )
         if total_power > 0:
-            band_ratios[f"energy_ratio_{req_band_name}"] = req_band_power / total_power
+            norm_pd: np.ndarray = psd / total_power
+            norm_pd = norm_pd[norm_pd > 0]  # avoid log(0)
+            entropy_frequency: float = -np.sum(norm_pd * np.log2(norm_pd))
         else:
-            band_ratios[f"energy_ratio_{req_band_name}"] = 0.0
+            entropy_frequency = 0.0
 
-    if shaft_freq > 0:
-        dominant_ratio: float = peak_frequency / shaft_freq
-    else:
-        dominant_ratio = 0.0
+        features: Dict[str, Union[float, np.ndarray, List[float]]] = {
+            "total_power": total_power,
+            "peak_frequency_hz": peak_frequency,
+            "peak_amplitude": peak_amplitude,
+            "spectral_centroid_hz": spectral_centroid,
+            "spectral_bandwidth_hz": spectral_bandwidth,
+            "spectral_skewness": spectral_skewness,
+            "spectral_kurtosis": spectral_kurtosis,
+            "dominant_ratio": dominant_ratio,
+            "snr_db": snr_db,
+            "cavitation_indicator": cavitation_indicator,
+            "rms_frequency_hz": rms,
+            "frequency_entropy": entropy_frequency,
+            "frequency_spectrum_freqs": freqs,
+            "frequency_spectrum_psd": psd,
+        }
+        features.update(band_powers)
+        features.update(band_ratios)
+        for i, ratio in enumerate(harmonic_ratios, start=1):
+            features[f"harmonic_{i}_ratio"] = ratio
+        return features
 
-    harmonic_ratios: List[float] = []
-    for i in range(1, 6):
-        harmonics_freq: float = i * shaft_freq
-        idx = np.argmin(np.abs(freqs - harmonics_freq))
-        if idx < len(psd):
-            harmonic_power = psd[idx]
-            harmonic_ratios.append(
-                harmonic_power / peak_amplitude if peak_amplitude > 0 else 0.0
-            )
-        else:
-            harmonic_ratios.append(0.0)
+    def extract_frequency_features(
+        self,
+        signal: np.ndarray,
+        features_list: Optional[List[str]] = None,
+    ) -> Dict[str, float]:
+        """
+        Wrapper function to extract a specific given frequency domain features from a signal.
+        Extract selected frequency features from signal
+        Args:
+            signal: Input vibration signal
+            fs: Sampling frequency in Hz
+            features_list: List of feature names to extract. If None, extracts all.
 
-    clean_power: float = total_power - band_powers.get("ultra_low_freq", 0.0)
-    noise_power: float = band_powers.get("ultra_low_freq", 0.0)
-    if noise_power > 0:
-        snr_db: float = 10 * np.log10(
-            clean_power / noise_power
-        )  # signal-to-noise ratio in dB
-    else:
-        snr_db = 0.0
-
-    cavitation_indicator: float = band_powers.get("high_freq", 0.0) + band_powers.get(
-        "ultra_high_freq", 0.0
-    )
-
-    rms: float = (
-        np.sqrt(np.trapz(freqs**2 * psd, freqs) / total_power)
-        if total_power > 0
-        else 0.0
-    )
-    if total_power > 0:
-        norm_pd: np.ndarray = psd / total_power
-        norm_pd = norm_pd[norm_pd > 0]  # avoid log(0)
-        entropy_frequency: float = -np.sum(norm_pd * np.log2(norm_pd))
-    else:
-        entropy_frequency = 0.0
-
-    features: Dict[str, Union[float, np.ndarray, List[float]]] = {
-        "total_power": total_power,
-        "peak_frequency_hz": peak_frequency,
-        "peak_amplitude": peak_amplitude,
-        "spectral_centroid_hz": spectral_centroid,
-        "spectral_bandwidth_hz": spectral_bandwidth,
-        "spectral_skewness": spectral_skewness,
-        "spectral_kurtosis": spectral_kurtosis,
-        "dominant_ratio": dominant_ratio,
-        "snr_db": snr_db,
-        "cavitation_indicator": cavitation_indicator,
-        "rms_frequency_hz": rms,
-        "frequency_entropy": entropy_frequency,
-        "frequency_spectrum_freqs": freqs,
-        "frequency_spectrum_psd": psd,
-    }
-    features.update(band_powers)
-    features.update(band_ratios)
-    for i, ratio in enumerate(harmonic_ratios, start=1):
-        features[f"harmonic_ratio_{i}_ratio"] = ratio
-    return features
-
-
-def extract_frequency_features(
-    signal: np.ndarray,
-    sampling_rate: float = 10000,
-    shaft_freq: float = 1750,
-    nperseg: int = 1024,
-    features_list: Optional[List[str]] = None,
-) -> Dict[str, float]:
-    """
-    Wrapper function to extract a specific given frequency domain features from a signal.
-    Extract selected frequency features from signal
-    Args:
-        signal: Input vibration signal
-        fs: Sampling frequency in Hz
-        features_list: List of feature names to extract. If None, extracts all.
-
-    Returns:
-        Dictionary with selected features as float values
-    """
-    all_features: Dict[str, Union[float, np.ndarray, List[float]]] = (
-        _compute_frequency_features(signal, nperseg, sampling_rate, shaft_freq)
-    )
-    float_features: Dict[str, float] = {}
-    for key, value in all_features.items():
-        if isinstance(value, (float, int, np.float64, np.int64)):
-            float_features[key] = float(value)
-        elif features_list and key in features_list:
-            if isinstance(value, (np.ndarray, list)):
-                value = np.mean(value)
+        Returns:
+            Dictionary with selected features as float values
+        """
+        all_features: Dict[str, Union[float, np.ndarray, List[float]]] = (
+            self._compute_frequency_features(signal)
+        )
+        float_features: Dict[str, float] = {}
+        for key, value in all_features.items():
+            if isinstance(value, (float, int, np.float64, np.int64)):
                 float_features[key] = float(value)
+            elif features_list and key in features_list:
+                if isinstance(value, (np.ndarray, list)):
+                    value = np.mean(value)
+                    float_features[key] = float(value)
 
-    if features_list:
-        filtered_features: Dict[str, float] = {}
-        for feature_name in features_list:
-            if feature_name in float_features:
-                filtered_features[feature_name] = float_features[feature_name]
-            elif feature_name in all_features:
-                feature_value = all_features[feature_name]
-                if isinstance(feature_value, (np.ndarray, list)):
-                    feature_value = np.mean(feature_value)
-                    filtered_features[feature_name] = float(feature_value)
-                elif isinstance(feature_value, (float, int, np.float64, np.int64)):
-                    filtered_features[feature_name] = float(feature_value)
-        return filtered_features
-    return float_features
+        if features_list:
+            filtered_features: Dict[str, float] = {}
+            for feature_name in features_list:
+                if feature_name in float_features:
+                    filtered_features[feature_name] = float_features[feature_name]
+                elif feature_name in all_features:
+                    feature_value = all_features[feature_name]
+                    if isinstance(feature_value, (np.ndarray, list)):
+                        feature_value = np.mean(feature_value)
+                        filtered_features[feature_name] = float(feature_value)
+                    elif isinstance(feature_value, (float, int, np.float64, np.int64)):
+                        filtered_features[feature_name] = float(feature_value)
+            return filtered_features
+        return float_features
 
+    @staticmethod
+    def get_frequency_feature_names(
+        feature_list: Optional[Union[List[str], str]] = None,
+    ) -> List[str]:
+        """
+        Get the list of all available frequency domain feature names.
+        """
+        default_features: List[str] = [
+            "peak_frequency_hz",
+            "peak_amplitude",
+            "total_power",
+            "spectral_centroid_hz",
+            "spectral_bandwidth_hz",
+            "spectral_skewness",
+            "spectral_kurtosis",
+            "rms_frequency_hz",
+            "frequency_entropy",
+            "dominant_ratio",
+            "snr_db",
+            "cavitation_indicator",
+            "energy_ratio_ultra_low",
+            "energy_ratio_low",
+            "energy_ratio_medium",
+            "energy_ratio_high",
+            "energy_ratio_ultra_high",
+            "harmonic_1_ratio",
+            "harmonic_2_ratio",
+            "harmonic_3_ratio",
+            "harmonic_4_ratio",
+            "harmonic_5_ratio",
+        ]
+        if feature_list:
+            return [feature for feature in feature_list if feature in default_features]
+        return default_features
 
-def get_frequency_feature_names(
-    feature_list: Optional[Union[List[str], str]] = None,
-) -> List[str]:
-    """
-    Get the list of all available frequency domain feature names.
-    """
-    default_features: List[str] = [
-        "peak_frequency_hz",
-        "peak_amplitude",
-        "total_power",
-        "spectral_centroid_hz",
-        "spectral_bandwidth_hz",
-        "spectral_skewness",
-        "spectral_kurtosis",
-        "rms_frequency_hz",
-        "frequency_entropy",
-        "dominant_frequency_ratio",
-        "snr_db",
-        "cavitation_indicator",
-        "energy_ratio_ultra_low",
-        "energy_ratio_low",
-        "energy_ratio_medium",
-        "energy_ratio_high",
-        "energy_ratio_ultra_high",
-        "harmonic_1_ratio",
-        "harmonic_2_ratio",
-        "harmonic_3_ratio",
-        "harmonic_4_ratio",
-        "harmonic_5_ratio",
-    ]
-    if feature_list:
-        return [feature for feature in feature_list if feature in default_features]
-    return default_features
-
-
-def batch_extract_frequency_features(
-    signal: Union[List[np.ndarray], np.ndarray],
-    sampling_rate: float = 10000,
-    shaft_freq: float = 1750,
-    nperseg: int = 1024,
-    features_list: Optional[List[str]] = None,
-    verbose: bool = True,
-) -> np.ndarray:
-    """
-    Extract frequency domain features from different signals in batch.
-    Returns:
-        2D numpy array of features (n_signals x n_features)
-    """
-    all_features: List[Dict[str, float]] = []
-    try:
-        for idx, sig in enumerate(signal):
-            features: Dict[str, float] = extract_frequency_features(
-                sig,
-                sampling_rate=sampling_rate,
-                shaft_freq=shaft_freq,
-                nperseg=nperseg,
-                features_list=features_list,
-            )
-            all_features.append(features)
+    def batch_extract_frequency_features(
+        self,
+        signals: Union[List[np.ndarray], np.ndarray],
+        features_list: Optional[List[str]] = None,
+        verbose: bool = True,
+    ) -> np.ndarray:
+        """
+        Extract frequency domain features from different signals in batch.
+        Returns:
+            2D numpy array of features (n_signals x n_features)
+        """
+        all_features: List[Dict[str, float]] = []
+        try:
+            for idx, signal in enumerate(signals):
+                features: Dict[str, float] = self.extract_frequency_features(
+                    signal, features_list
+                )
+                all_features.append(features)
+                if verbose:
+                    print(f"Extracted features from signal {idx + 1}/{len(signals)}")
+        except Exception as e:
             if verbose:
-                print(f"Extracted features from signal {idx + 1}/{len(signal)}")
-    except Exception as e:
+                print(f"Error during batch feature extraction: {str(e)}")
+            if all_features:
+                log.log_warning(
+                    "Batch feature extraction encountered an error. Returning features extracted so far."
+                )
+            else:
+                all_features.append({})
+
+        if not all_features:
+            return np.array([])
+
+        feature_names: List[str] = [feat for feat in all_features[0].keys()]
+        feature_matrix: np.ndarray = np.zeros((len(all_features), len(feature_names)))
+        for i, feat_dict in enumerate(all_features):
+            for j, feat_name in enumerate(feature_names):
+                feature_matrix[i, j] = feat_dict.get(feat_name, 0.0)
         if verbose:
-            print(f"Error during batch feature extraction: {str(e)}")
-        if all_features:
-            zero_features = {key: 0.0 for key in all_features[0].keys()}
-            all_features.append(zero_features)
-        else:
-            all_features.append({})
-
-    if not all_features:
-        return np.array([])
-
-    feature_names: List[str] = [feat for feat in all_features[0].keys()]
-    feature_matrix: np.ndarray = np.zeros((len(all_features), len(feature_names)))
-    for i, feat_dict in enumerate(all_features):
-        for j, feat_name in enumerate(feature_names):
-            feature_matrix[i, j] = feat_dict.get(feat_name, 0.0)
-    if verbose:
-        print(
-            f"Extracted {len(all_features)} frequency features from {len(feature_names)} signals"
-        )
-
-    return feature_matrix
-
-
-def plot_frequency_spectrum_example(
-    signal: np.ndarray,
-    sampling_rate: float = 10000,
-    nperseg: int = 1024,
-    shaft_freq: float = 1750,
-    title: str = "Frequency Spectrum",
-    save_path: Optional[str] = None,
-) -> None:
-    """
-    Plot the frequency spectrum of a given signal.
-    """
-    features: Dict[str, Union[float, np.ndarray, List[float]]] = (
-        _compute_frequency_features(
-            signal, shaft_freq=shaft_freq, sampling_rate=sampling_rate, nperseg=nperseg
-        )
-    )
-    freqs: np.ndarray = features["frequency_spectrum_freqs"]
-    psd: np.ndarray = features["frequency_spectrum_psd"]
-
-    fig, ax = plt.subplots(2, 2, figsize=(12, 8))
-    ax[0, 0].semilogy(freqs, psd, color="blue")
-    ax[0, 0].set_title("Power Spectral Density")
-    ax[0, 0].set_xlabel("Frequency (Hz)")
-    ax[0, 0].set_ylabel("PSD (V^2/Hz)")
-    ax[0, 0].grid(True, alpha=0.3)
-
-    # Highlight key frequencies
-    ax[0, 1].plot(freqs, psd, color="blue")
-    ax[0, 1].set_title("Frequency Spectrum with Key Frequencies")
-    ax[0, 1].set_xlabel("Frequency (Hz)")
-    ax[0, 1].set_ylabel("PSD (V^2/Hz)")
-    ax[0, 1].grid(True, alpha=0.3)
-
-    # mark peak frequency
-    peak_freq: float = features["peak_frequency_hz"]
-    peak_idx: int = np.argmin(np.abs(freqs - peak_freq))
-    ax[0, 1].axvline(
-        x=peak_freq,
-        color="red",
-        linestyle="--",
-        alpha=0.7,
-        label=f"Peak: {peak_freq:.1f} Hz",
-    )
-    shaft_freq_hz: float = shaft_freq / 60.0
-    ax[0, 1].axvline(
-        x=shaft_freq_hz,
-        color="green",
-        linestyle="--",
-        alpha=0.7,
-        label=f"Shaft Freq: {shaft_freq_hz:.1f} Hz",
-    )
-
-    # mark harmonics
-    colors = ["orange", "purple", "brown", "pink", "gray"]
-    for i in range(1, 6):
-        harmonic_freq: float = i * shaft_freq_hz
-        if harmonic_freq < freqs[-1]:
-            ax[0, 1].axvline(
-                x=harmonic_freq,
-                color=colors[i - 1],
-                linestyle="--",
-                alpha=0.7,
-                label=f"Harmonic {i}: {harmonic_freq:.1f} Hz",
+            print(
+                f"Extracted {len(all_features)} frequency features from {len(feature_names)} signals"
             )
 
-    ax[0, 1].legend(fontsize="small")
+        return feature_matrix
 
-    # Energy distribution across bands
-    band_names = [
-        "ultra_low_freq",
-        "low_freq",
-        "medium_freq",
-        "high_freq",
-        "ultra_high_freq",
-    ]
-    band_colors = ["cyan", "magenta", "yellow", "orange", "red"]
-    band_powers = [
-        features.get(f"energy_ratio_{band}", 0.0) * 100 for band in band_names
-    ]
-    ax[1, 0].bar(range(len(band_names)), band_powers, color=band_colors)
-    ax[1, 0].set_title("Energy Distribution Across Frequency Bands")
-    ax[1, 0].set_xlabel("Frequency Bands")
-    ax[1, 0].set_ylabel("Energy Percentage (%)")
-    ax[1, 0].set_xticks(range(len(band_names)))
-    ax[1, 0].set_xticklabels(band_names, rotation=45, ha="right")
-    ax[1, 0].grid(True, alpha=0.3)
+    def plot_frequency_spectrum_example(
+        self,
+        signal: np.ndarray,
+        title: str = "Frequency Spectrum",
+        save_path: Optional[str] = None,
+    ) -> None:
+        """
+        Plot the frequency spectrum of a given signal.
+        """
+        features: Dict[str, Union[float, np.ndarray, List[float]]] = (
+            self._compute_frequency_features(signal)
+        )
+        freqs: np.ndarray = features["frequency_spectrum_freqs"]
+        psd: np.ndarray = features["frequency_spectrum_psd"]
 
-    # Add percentage label
-    for i, power in enumerate(band_powers):
-        ax[1, 0].text(
-            i, power + 1, f"{power:.1f}%", ha="center", va="bottom", fontsize=8
+        fig, ax = plt.subplots(2, 2, figsize=(12, 8))
+        ax[0, 0].semilogy(freqs, psd, color="blue")
+        ax[0, 0].set_title("Power Spectral Density")
+        ax[0, 0].set_xlabel("Frequency (Hz)")
+        ax[0, 0].set_ylabel("PSD (V^2/Hz)")
+        ax[0, 0].grid(True, alpha=0.3)
+
+        # Highlight key frequencies
+        ax[0, 1].plot(freqs, psd, color="blue")
+        ax[0, 1].set_title("Frequency Spectrum with Key Frequencies")
+        ax[0, 1].set_xlabel("Frequency (Hz)")
+        ax[0, 1].set_ylabel("PSD (V^2/Hz)")
+        ax[0, 1].grid(True, alpha=0.3)
+
+        # mark peak frequency
+        peak_freq: float = features["peak_frequency_hz"]
+        ax[0, 1].axvline(
+            x=peak_freq,
+            color="red",
+            linestyle="--",
+            alpha=0.7,
+            label=f"Peak: {peak_freq:.1f} Hz",
+        )
+        shaft_freq_hz: float = self.generator.shaft_freq / 60.0
+        ax[0, 1].axvline(
+            x=shaft_freq_hz,
+            color="green",
+            linestyle="--",
+            alpha=0.7,
+            label=f"Shaft Freq: {shaft_freq_hz:.1f} Hz",
         )
 
-    key_features = {
-        "Peak Freq (Hz)": f"{features['peak_frequency_hz']:.1f}",
-        "Spectral Centroid (Hz)": f"{features['spectral_centroid_hz']:.1f}",
-        "Total Power": f"{features['total_power']:.2e}",
-        "SNR (dB)": f"{features['snr_db']:.1f}",
-        "Cavitation Indicator": f"{features['cavitation_indicator']:.3f}",
-    }
-    summary_text = "\n".join([f"{k}: {v}" for k, v in key_features.items()])
-    ax[1, 1].text(
-        0.1,
-        0.5,
-        summary_text,
-        fontsize=12,
-        verticalalignment="center",
-        fontfamily="monospace",
-    )
+        # mark harmonics
+        colors = ["orange", "purple", "brown", "pink", "gray"]
+        for i in range(1, 6):
+            harmonic_freq: float = i * shaft_freq_hz
+            if harmonic_freq < freqs[-1]:
+                ax[0, 1].axvline(
+                    x=harmonic_freq,
+                    color=colors[i - 1],
+                    linestyle="--",
+                    alpha=0.7,
+                    label=f"Harmonic {i}: {harmonic_freq:.1f} Hz",
+                )
 
-    ax[1, 1].set_title("Feature Summary")
-    ax[1, 1].axis("off")
+        ax[0, 1].legend(fontsize="small")
 
-    # Main title
-    fig.suptitle(title, fontsize=16, fontweight="bold")
-    plt.tight_layout()
-    if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"Plot saved to {save_path}")
+        # Energy distribution across bands
+        band_names = [
+            "ultra_low_freq",
+            "low_freq",
+            "medium_freq",
+            "high_freq",
+            "ultra_high_freq",
+        ]
+        band_colors = ["cyan", "magenta", "yellow", "orange", "red"]
+        band_powers = [
+            features.get(f"energy_ratio_{band}", 0.0) * 100 for band in band_names
+        ]
+        ax[1, 0].bar(range(len(band_names)), band_powers, color=band_colors)
+        ax[1, 0].set_title("Energy Distribution Across Frequency Bands")
+        ax[1, 0].set_xlabel("Frequency Bands")
+        ax[1, 0].set_ylabel("Energy Percentage (%)")
+        ax[1, 0].set_xticks(range(len(band_names)))
+        ax[1, 0].set_xticklabels(band_names, rotation=45, ha="right")
+        ax[1, 0].grid(True, alpha=0.3)
 
-    plt.show()
+        # Add percentage label
+        for i, power in enumerate(band_powers):
+            ax[1, 0].text(
+                i, power + 1, f"{power:.1f}%", ha="center", va="bottom", fontsize=8
+            )
 
+        key_features = {
+            "Peak Freq (Hz)": f"{features['peak_frequency_hz']:.1f}",
+            "Spectral Centroid (Hz)": f"{features['spectral_centroid_hz']:.1f}",
+            "Total Power": f"{features['total_power']:.2e}",
+            "SNR (dB)": f"{features['snr_db']:.1f}",
+            "Cavitation Indicator": f"{features['cavitation_indicator']:.3f}",
+        }
+        summary_text = "\n".join([f"{k}: {v}" for k, v in key_features.items()])
+        ax[1, 1].text(
+            0.1,
+            0.5,
+            summary_text,
+            fontsize=12,
+            verticalalignment="center",
+            fontfamily="monospace",
+        )
 
-def normalize_features(
-    x: np.ndarray, method: str, return_scaler: bool = False
-) -> Union[np.ndarray, Tuple[np.ndarray, any]]:
-    """
-    Normalize feature matrix.
-    """
-    if np.any(x) == 0:
-        raise ValueError("Feature matrix contains all zero values, cannot normalize.")
-    if np.any(np.isnan(x)):
-        raise ValueError("Feature matrix contains NaN values, cannot normalize.")
-    if np.any(np.isinf(x)):
-        raise ValueError("Feature matrix contains Inf values, cannot normalize.")
+        ax[1, 1].set_title("Feature Summary")
+        ax[1, 1].axis("off")
 
-    x_original = x.copy()
+        # Main title
+        fig.suptitle(title, fontsize=16, fontweight="bold")
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=150, bbox_inches="tight")
+            print(f"Plot saved to {save_path}")
 
-    if method == "standard":
-        scaler = StandardScaler()
-        normalized = scaler.fit_transform(x_original)
-    elif method == "minmax":
-        scaler = MinMaxScaler()
-        normalized = scaler.fit_transform(x_original)
-    elif method == "robust":
-        scaler = RobustScaler()
-        normalized = scaler.fit_transform(x_original)
+        plt.show()
 
-    elif method == "unit":
-        norms = np.linalg.norm(x_original, axis=0)
-        norms[norms == 0] = 1
-        normalized = x_original / norms
+    @staticmethod
+    def normalize_features(
+        x: np.ndarray, method: str, return_scaler: bool = False
+    ) -> Union[np.ndarray, Tuple[np.ndarray, any]]:
+        """
+        Normalize feature matrix.
+        """
+        if np.all(x == 0):
+            raise ValueError(
+                "Feature matrix contains all zero values, cannot normalize."
+            )
+        if np.any(np.isnan(x)):
+            raise ValueError("Feature matrix contains NaN values, cannot normalize.")
+        if np.any(np.isinf(x)):
+            raise ValueError("Feature matrix contains Inf values, cannot normalize.")
 
-        class DummyScaler:
-            """Dummy scaler for unit normalization."""
+        x_original = x.copy()
 
-            def __init__(self, norms):
-                self.scaler = norms
+        if method == "standard":
+            scaler = StandardScaler()
+            normalized = scaler.fit_transform(x_original)
+        elif method == "minmax":
+            scaler = MinMaxScaler()
+            normalized = scaler.fit_transform(x_original)
+        elif method == "robust":
+            scaler = RobustScaler()
+            normalized = scaler.fit_transform(x_original)
 
-        scaler = DummyScaler(norms)
+        elif method == "unit":
+            norms = np.linalg.norm(x_original, axis=0)
+            norms[norms == 0] = 1
+            normalized = x_original / norms
 
-    elif method == "log":
-        if np.any(x_original < 0):
-            log.log_warning("Log normalization cannot be applied to negative values.")
-            x_positive = x_original - np.min(x_original) + EPS
+            class DummyScaler:
+                """Dummy scaler for unit normalization."""
+
+                def __init__(self, norms):
+                    self.scaler = norms
+
+            scaler = DummyScaler(norms)
+
+        elif method == "log":
+            if np.any(x_original < 0):
+                log.log_warning(
+                    "Log normalization cannot be applied to negative values."
+                )
+                x_positive = (
+                    x_original - np.min(x_original) + FrequencyFeatureExtractor.EPS
+                )
+            else:
+                x_positive = x_original
+            normalized = np.log1p(x_positive)
+
+            class DummyScaler:
+                """Dummy scaler for log normalization."""
+
+                def __init__(self):
+                    self.scaler = None
+
+            scaler = DummyScaler()
+
         else:
-            x_positive = x_original
-        normalized = np.log1p(x_positive)
+            raise ValueError(f"Normalization method '{method}' is not recognized.")
 
-        class DummyScaler:
-            """Dummy scaler for log normalization."""
+        if return_scaler:
+            return normalized, scaler
 
-            def __init__(self):
-                self.scaler = None
+        return normalized
 
-        scaler = DummyScaler()
+    @staticmethod
+    def feature_importance_analysis(
+        x: np.ndarray,
+        y: np.ndarray,
+        feature_names: Optional[List[str]] = None,
+        method: str = "f-score",
+        top_k: Optional[int] = 10,
+        task: str = "classification",
+        random_state: int = 42,
+    ) -> Dict[str, Any]:
+        """
+        Analyze feature importance using RandomForestClassifier, RandomForestRegressor
+        """
+        if x.shape[0] != len(y):
+            raise ValueError("Number of samples in X and y must be the same.")
 
-    else:
-        raise ValueError(f"Normalization method '{method}' is not recognized.")
+        if feature_names is None:
+            feature_names = [f"feature_{i}" for i in range(x.shape[1])]
+        elif len(feature_names) != x.shape[1]:
+            raise ValueError(
+                "Length of feature_names must match number of features in X."
+            )
 
-    if return_scaler:
-        return normalized, scaler
+        # Handle NaN and Inf values
+        if np.any(np.isnan(x)):
+            x = np.where(np.isnan(x), np.nanmean(x, axis=0), x)
+        if np.any(np.isinf(x)):
+            x = np.where(np.isinf(x), np.mean(x[np.isfinite(x)], axis=0), x)
 
-    return normalized
+        if np.any(np.isnan(y)):
+            y = np.where(np.isnan(y), np.nanmean(y), y)
+        if np.any(np.isinf(y)):
+            y = np.where(np.isinf(y), np.mean(y[np.isfinite(y)]), y)
 
+        results: Dict[str, float] = {
+            "feature_names": feature_names,
+            "importance_scores": [],
+            "top_features": [],
+            "ranked_features": [],
+            "selected_features": [],
+            "method": method,
+            "task": task,
+        }
 
-def feature_importance_analysis(
-    x: np.ndarray,
-    y: np.ndarray,
-    feature_names: Optional[List[str]] = None,
-    method: str = "f-score",
-    top_k: Optional[int] = 10,
-    task: str = "classification",
-    random_state: int = 42,
-) -> Dict[str, Any]:
-    """
-    Analyze feature importance using RandomForestClassifier, RandomForestRegressor
-    """
-    if x.shape[0] != len(y):
-        raise ValueError("Number of samples in X and y must be the same.")
+        if method == "f-score":
+            if task == "classification":
+                selector = fs.SelectKBest(score_func=fs.f_classif, k="all")
+            else:
+                selector = fs.SelectKBest(score_func=fs.f_regression, k="all")
 
-    if feature_names is None:
-        feature_names = [f"feature_{i}" for i in range(x.shape[1])]
-    elif len(feature_names) != x.shape[1]:
-        raise ValueError("Length of feature_names must match number of features in X.")
+            selector.fit(x, y)
+            importance_scores = selector.scores_
 
-    # Handle NaN and Inf values
-    if np.any(np.isnan(x)):
-        np.where(np.isnan(x), np.nanmean(x, axis=0), x)
-    if np.any(np.isinf(x)):
-        np.where(np.isinf(x), np.mean(x[np.isfinite(x)], axis=0), x)
+        elif method == "mutual_info":
+            if task == "classification":
+                importance_scores = fs.mutual_info_classif(
+                    x, y, random_state=random_state
+                )
+            elif task == "regression":
+                importance_scores = fs.mutual_info_regression(
+                    x, y, random_state=random_state
+                )
 
-    if np.any(np.isnan(y)):
-        np.where(np.isnan(y), np.nanmean(y), y)
-    if np.any(np.isinf(y)):
-        np.where(np.isinf(y), np.mean(y[np.isfinite(y)]), y)
+        elif method == "random_forest":
+            if task == "classification":
+                model = RandomForestClassifier(
+                    n_estimators=100, random_state=random_state
+                )
+            else:
+                model = RandomForestRegressor(
+                    n_estimators=100, random_state=random_state
+                )
 
-    results: Dict[str, float] = {
-        "feature_names": feature_names,
-        "importance_scores": [],
-        "top_features": [],
-        "ranked_features": [],
-        "selected_features": [],
-        "method": method,
-        "task": task,
-    }
+            model.fit(x, y)
+            importance_scores = model.feature_importances_
 
-    if method == "f-score":
-        if task == "classification":
-            selector = fs.SelectKBest(score_func=fs.f_classif, k="all")
-        else:
-            selector = fs.SelectKBest(score_func=fs.f_regression, k="all")
-
-        selector.fit(x, y)
-        scores = selector.scores_
-
-    elif method == "mutual_info":
-        if task == "classification":
-            scores = fs.mutual_info_classif(x, y, random_state=random_state)
-        elif task == "regression":
-            scores = fs.mutual_info_regression(x, y, random_state=random_state)
-
-    elif method == "random_forest":
-        if task == "classification":
-            model = RandomForestClassifier(n_estimators=100, random_state=random_state)
-        else:
-            model = RandomForestRegressor(n_estimators=100, random_state=random_state)
-
-        model.fit(x, y)
-        scores = model.feature_importances_
-
-    elif method == "correlation":
-        if task == "classification":
-            if np.unique(y) == 2:
-                corr_coefs = []
-                for i in range(x.shape[1]):
-                    coef = np.corrcoef(x[:, i], y)[0, 1]
-                    corr_coefs.append(abs(coef))
-                scores = np.array(corr_coefs)
+        elif method == "correlation":
+            if task == "classification":
+                if len(np.unique(y)) == 2:
+                    corr_coefs = []
+                    for i in range(x.shape[1]):
+                        corr = np.corrcoef(x[:, i], y)[0, 1]
+                        corr_coefs.append(abs(corr))
+                    importance_scores = np.array(corr_coefs)
+                else:
+                    corr_coefs = []
+                    for i in range(x.shape[1]):
+                        max_corr = 0
+                        for class_label in np.unique(y):
+                            binary_y = (y == class_label).astype(int)
+                            corr = np.corrcoef(x[:, i], binary_y)[0, 1]
+                            max_corr = max(max_corr, abs(corr))
+                        corr_coefs.append(corr)
+                    importance_scores = np.array(corr_coefs)
             else:
                 corr_coefs = []
                 for i in range(x.shape[1]):
-                    max_coef = 0
-                    for class_label in np.unique(y):
-                        binary_y = (y == class_label).astype(int)
-                        coef = np.corrcoef(x[:, i], binary_y)[0, 1]
-                        max_coef = max(max_coef, abs(coef))
-                    corr_coefs.append(max_coef)
-                scores = np.array(corr_coefs)
+                    corr = np.corrcoef(x[:, i], y)[0, 1]
+                    corr_coefs.append(abs(corr))
+                importance_scores = np.array(corr_coefs)
+
+        elif method == "variance":
+            importance_scores = np.var(x, axis=0)
         else:
-            corr_coefs = []
-            for i in range(x.shape[1]):
-                coef = np.corrcoef(x[:, i], y)[0, 1]
-                corr_coefs.append(abs(coef))
-            scores = np.array(corr_coefs)
-        importance_scores = scores
+            raise ValueError(f"Unknown feature importance method: {method}")
+        importance_scores = np.nan_to_num(
+            importance_scores, nan=0.0, posinf=0.0, neginf=0.0
+        )
+        # normalize scores
+        max_score = np.max(importance_scores)
+        if max_score > 0:
+            importance_scores = importance_scores / max_score
 
-    elif method == "variance":
-        importance_scores = np.var(x, axis=0)
-    else:
-        raise ValueError(f"Unknown feature importance method: {method}")
-    importance_scores = np.nan_to_num(scores, nan=0.0, posinf=0.0, neginf=0.0)
-    # normalize scores
-    max_score = np.max(importance_scores)
-    if max_score > 0:
-        importance_scores = importance_scores / max_score
+        # Rank features
+        ranked_indices = np.argsort(importance_scores)[::-1]
+        ranked_feature_names = [feature_names[i] for i in ranked_indices]
+        ranked_scores = [importance_scores[i] for i in ranked_indices]
 
-    # Rank features
-    ranked_indices = np.argsort(importance_scores)[::-1]
-    ranked_feature_names = [feature_names[i] for i in ranked_indices]
-    ranked_scores = [importance_scores[i] for i in ranked_indices]
+        # Select top k features
+        if top_k is not None:
+            top_k = min(top_k, len(feature_names))
+            selected_indices = ranked_indices[:top_k]
+            selected_features = [feature_names[i] for i in selected_indices]
+        else:
+            selected_features = ranked_feature_names
 
-    # Select top k features
-    if top_k is not None:
-        top_k = min(top_k, len(feature_names))
-        selected_indices = ranked_indices[:top_k]
-        selected_features = [feature_names[i] for i in selected_indices]
-    else:
-        selected_features = ranked_feature_names
+        # Store results
+        results["importance_scores"] = importance_scores.tolist()
+        results["ranked_features"] = ranked_feature_names
+        results["ranked_scores"] = ranked_scores
+        results["selected_features"] = selected_features
 
-    # Store results
-    results["importance_scores"] = importance_scores.tolist()
-    results["ranked_features"] = ranked_feature_names
-    results["ranked_scores"] = ranked_scores.tolist()
-    results["selected_features"] = selected_features
-
-    # Additional statistics
-    results["summary"] = {
-        "num_features": len(feature_names),
-        "mean_importance": float(np.mean(importance_scores)),
-        "std_importance": float(np.std(importance_scores)),
-        "max_importance": float(np.max(importance_scores)),
-        "min_importance": float(np.min(importance_scores)),
-    }
-    return results
+        # Additional statistics
+        results["summary"] = {
+            "num_features": len(feature_names),
+            "mean_importance": float(np.mean(importance_scores)),
+            "std_importance": float(np.std(importance_scores)),
+            "max_importance": float(np.max(importance_scores)),
+            "min_importance": float(np.min(importance_scores)),
+        }
+        return results

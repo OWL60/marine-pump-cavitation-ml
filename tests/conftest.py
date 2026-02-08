@@ -6,7 +6,8 @@ import numpy as np
 import pytest
 from scipy import stats
 
-from src.data import MarinePumpVibrationDataGenerator
+from src.data.generator import MarinePumpVibrationDataGenerator
+from src.features.frequency_features import FrequencyFeatureExtractor
 
 
 @pytest.fixture
@@ -14,8 +15,10 @@ def baseline_vibration() -> list:
     """
     Test the generate_vibration_signal method.
     """
-    generator = MarinePumpVibrationDataGenerator(sample_rate=100000)
-    signal = generator.generate_vibration_signal(rpm=1750, duration=1.0)
+    generator = MarinePumpVibrationDataGenerator(
+        sample_rate=10000, shaft_freq=1750, duration=1.0
+    )
+    signal = generator.generate_vibration_signal()
 
     baseline_stats = {
         "mean": np.mean(signal),
@@ -49,9 +52,7 @@ def cavitation_vibration(baseline_vibration, request) -> list:
     """
     baseline_signal, generator_obj, baseline_stats = baseline_vibration
     severity = request.param
-    cav_signal = generator_obj.add_cavitation_effect(
-        baseline_signal, generator_obj.sample_rate, severity
-    )
+    cav_signal = generator_obj.add_cavitation_effect(baseline_signal, severity)
 
     rms = np.sqrt(np.mean(cav_signal**2))
     assert isinstance(cav_signal, np.ndarray), "cavitation signal is not of np.ndarray"
@@ -61,3 +62,13 @@ def cavitation_vibration(baseline_vibration, request) -> list:
     assert rms > baseline_stats["rms"] * 0.8, "RMS is too high"
 
     return cav_signal, baseline_signal, generator_obj, baseline_stats
+
+
+@pytest.fixture
+def frequency_feature_extractor(baseline_vibration) -> FrequencyFeatureExtractor:
+    """
+    Fixture for creating a FrequencyFeatureExtractor instance.
+    """
+    _, generator, _ = baseline_vibration
+    extractor = FrequencyFeatureExtractor(generator)
+    return extractor
