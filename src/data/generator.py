@@ -24,12 +24,14 @@ class MarinePumpVibrationDataGenerator:
         sample_rate (int): Sampling rate in Hz.
     """
 
-    def __init__(self, sample_rate: int = 1000):
+    def __init__(
+        self, sample_rate: int = 1000, shaft_freq: int = 1750, duration: float = 1.0
+    ):
         self.sample_rate = sample_rate
+        self.shaft_freq = shaft_freq
+        self.duration = duration
 
-    def generate_vibration_signal(
-        self, rpm: int = 1750, duration: float = 1.0
-    ) -> np.ndarray:
+    def generate_vibration_signal(self) -> np.ndarray:
         """
         Generate synthetic vibration signal for a marine pump.
         Args:
@@ -39,17 +41,21 @@ class MarinePumpVibrationDataGenerator:
             np.ndarray: Generated vibration signal.
 
         """
-        if rpm < 0:
+        if self.shaft_freq < 0:
             raise ValueError("rpm must be positive")
-        if duration < 1:
+        if self.duration < 1:
             raise ValueError("duration must be positive")
 
-        t = np.linspace(0, duration, int(self.sample_rate * duration), endpoint=False)
-        shaft_frequency = rpm / 60  # Convert RPM to Hz
-        signals = 0.5 * np.sin(2 * np.pi * shaft_frequency * t)  # Base vibration signal
+        t = np.linspace(
+            0, self.duration, int(self.sample_rate * self.duration), endpoint=False
+        )
+        shaft_frequency_hz = self.shaft_freq / 60  # Convert RPM to Hz
+        signals = 0.5 * np.sin(
+            2 * np.pi * shaft_frequency_hz * t
+        )  # Base vibration signal
         # Add harmonics
-        signals += 0.2 * np.sin(2 * np.pi * 2 * shaft_frequency * t)  # 2nd harmonic
-        signals += 0.1 * np.sin(2 * np.pi * 3 * shaft_frequency * t)  # 3rd harmonic
+        signals += 0.2 * np.sin(2 * np.pi * 2 * shaft_frequency_hz * t)  # 2nd harmonic
+        signals += 0.1 * np.sin(2 * np.pi * 3 * shaft_frequency_hz * t)  # 3rd harmonic
 
         # Add some noise
         noise = 0.05 * np.random.normal(size=signals.shape)
@@ -100,7 +106,6 @@ class MarinePumpVibrationDataGenerator:
     def add_cavitation_effect(
         self,
         signals: np.ndarray,
-        sample_rate,
         severity: float = "mild",
         cavitation_start: float = 0.5,
     ) -> np.ndarray:
@@ -116,8 +121,8 @@ class MarinePumpVibrationDataGenerator:
         # Frequency noise
         cavitation_signal = signals.copy()
         n_sample = len(signals)
-        time_to_take_sample = np.linspace(0, n_sample / sample_rate, n_sample)
-        start_index = int(cavitation_start * sample_rate)
+        time_to_take_sample = np.linspace(0, n_sample / self.sample_rate, n_sample)
+        start_index = int(cavitation_start * self.sample_rate)
 
         if start_index >= n_sample:
             log.log_warning("Start index exceeds number of sample.")
@@ -133,7 +138,7 @@ class MarinePumpVibrationDataGenerator:
 
         # Add Random spikes
         spike = np.zeros_like(signals)
-        duration_after_cavitation = (n_sample - start_index) / sample_rate
+        duration_after_cavitation = (n_sample - start_index) / self.sample_rate
         spikes_per_second = {"mild": 5, "moderate": 20, "severe": 30}
         num_spikes = int(
             duration_after_cavitation * spikes_per_second.get(severity, 10)
@@ -160,9 +165,11 @@ class MarinePumpVibrationDataGenerator:
         modulation_effect = modulation + 1.0
 
         # Add sub-harmonics
-        shaft_frequency = 1750 / 60  # Assuming rpm=1750 for sub-harmonic calculation
+        shaft_frequency_hz = (
+            self.shaft_freq / 60
+        )  # Assuming rpm=1750 for sub-harmonic calculation
         sub_harmonic = np.zeros_like(signals)
-        sub_harmonic_freq = shaft_frequency / 2  # Half of shaft frequency
+        sub_harmonic_freq = shaft_frequency_hz / 2  # Half of shaft frequency
         sub_harmonic[start_index:] = 0.2 * np.sin(
             2 * np.pi * sub_harmonic_freq * time_to_take_sample[start_index:]
         )
@@ -509,8 +516,6 @@ class MarinePumpVibrationDataGenerator:
         X_raw = []
         y = []
         metadata = []
-        duration = 1.0  # seconds
-        signal_length = int(self.sample_rate * duration)
         cavitation_severities = ["mild"] * 3 + ["moderate"] * 4 + ["severe"] * 3
         marine_conditions = ["calm"] * 2 + ["moderate"] * 5 + ["rough"] * 3
 
@@ -536,7 +541,6 @@ class MarinePumpVibrationDataGenerator:
             if is_cavitation:
                 signals = self.add_cavitation_effect(
                     signals=base_signal,
-                    sample_rate=1000,
                     severity=severity,
                     cavitation_start=cavitation_start,
                 )
