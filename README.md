@@ -307,3 +307,13 @@ See the full license text in the [LICENSE](LICENSE) file.
 - [ ] class Config
    - [ ] load_yaml
 - [ ] validate_config
+
+
+## Recent implementation updates
+
+- Added `src/features/time_frequency_features.py` for STFT/spectrogram-based time-frequency features.
+- Added `src/features/physics_features.py` for cavitation number, NPSH margin, Reynolds number, and frequency energy-ratio features.
+- Added `src/models/cavitation_models.py` to train and benchmark Logistic Regression, Random Forest, and SVM models.
+- Added `src/explainability/xai.py` with SHAP/LIME integrations and robust fallback explainers.
+- Added `src/monitoring/dashboard.py` with lightweight risk monitoring payload utilities.
+- Added `benchmarks/benchmarks_all.py` to benchmark feature extraction and model performance end-to-end.
