@@ -43,9 +43,22 @@ def run_benchmarks(num_signals: int, sample_rate: int, duration: float) -> List[
     freq_extractor = FrequencyFeatureExtractor(generator)
     wavelet_extractor = WaveletTimeFrequencyFeatureExtractor(sample_rate=sample_rate)
 
+    def _run_frequency_features() -> None:
+        feature_matrix = freq_extractor.batch_extract_frequency_features(
+            signals, verbose=False
+        )
+        if feature_matrix.ndim != 2 or feature_matrix.shape[1] == 0:
+            raise ValueError(
+                "Frequency feature extraction produced an empty feature matrix. "
+                "Increase --sample-rate and/or --duration so valid frequency features can be computed."
+            )
+
+    # Validate frequency extraction succeeds before recording benchmark timings.
+    _run_frequency_features()
+
     return [
         _benchmark("Time features", lambda: [extract_time_features(s) for s in signals]),
-        _benchmark("Frequency features", lambda: freq_extractor.batch_extract_frequency_features(signals, verbose=False)),
+        _benchmark("Frequency features", _run_frequency_features),
         _benchmark("Wavelet time-frequency features", lambda: wavelet_extractor.batch_extract(signals)),
     ]
 
