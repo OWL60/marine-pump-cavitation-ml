@@ -307,3 +307,28 @@ See the full license text in the [LICENSE](LICENSE) file.
 - [ ] class Config
    - [ ] load_yaml
 - [ ] validate_config
+
+## Complete App Workflow
+
+You can now run the full end-to-end app from one pipeline script:
+
+```bash
+python main.py --mode run_all
+```
+
+Available modes:
+- `generate_data`
+- `train_models`
+- `create_plots`
+- `run_all`
+
+Artifacts are saved to:
+- `artifacts/data/`
+- `artifacts/models/`
+- `artifacts/results/`
+
+Launch the interactive dashboard:
+
+```bash
+streamlit run dashboard.py
+```

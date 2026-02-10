@@ -1,0 +1,19 @@
+data:
+  sample_rate: 10000
+  shaft_freq: 1750
+  duration: 1.0
+  n_samples: 200
+  include_marine_conditions: true
+  train_test_split: 0.2
+
+ml:
+  random_state: 42
+  random_forest:
+    n_estimators: 200
+    max_depth: 12
+    min_samples_split: 2
+
+paths:
+  data: "artifacts/data"
+  results: "artifacts/results"
+  models: "artifacts/models"
