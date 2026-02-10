@@ -35,6 +35,15 @@ This step ensures the dataset covers **both normal and cavitation scenarios**, c
   * Total power (`total_power`)
   * Energy ratios in defined frequency bands (e.g., low/high frequency energy ratios)
 
+
+* **Time-Frequency Features (Wavelet-Based):**
+  Captures non-stationary cavitation signatures using **Continuous Wavelet Transform (CWT)** scalograms (wavelet-based, not STFT):
+
+  * Wavelet total energy
+  * Wavelet peak frequency
+  * Wavelet spectral centroid
+  * Wavelet entropy and high/low energy ratio
+
 * **Physics-Informed Features:**
   Integrates pump physics and fluid dynamics into the feature set to improve model generalization and interpretability:
 

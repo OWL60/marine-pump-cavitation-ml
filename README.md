@@ -80,7 +80,7 @@ Current approaches to marine pump cavitation monitoring face four critical limit
 ### Marine Pump Vibration Analysis
 
 We analyze vibration signals from marine pumps.  
-We extract both **time-domain** and **frequency-domain** features to predict cavitation in marine centrifugal pumps.
+We extract **time-domain**, **frequency-domain**, and **wavelet time-frequency** features to predict cavitation in marine centrifugal pumps (using CWT wavelets, not STFT).
 
 ### Vibration Signal Overview
 
@@ -307,3 +307,20 @@ See the full license text in the [LICENSE](LICENSE) file.
 - [ ] class Config
    - [ ] load_yaml
 - [ ] validate_config
+
+
+### Browser Dashboard
+
+Run the interactive dashboard in your browser:
+
+```bash
+streamlit run src/visualization/dashboard.py
+```
+
+### Benchmarks UI
+
+Run the benchmark summary interface:
+
+```bash
+python benchmarks/benchmarks_all.py --num-signals 20
+```
