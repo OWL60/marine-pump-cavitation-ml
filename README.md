@@ -54,6 +54,28 @@ Also, the research addresses critical gaps in current condition monitoring syste
 
 ---
 
+
+## Dashboard (24/48h Prediction + Explainability)
+
+Run the executable to launch the full Streamlit dashboard:
+
+```bash
+python main.py
+```
+
+The dashboard includes:
+- 24-hour and 48-hour cavitation risk prediction
+- Explainability panel showing why cavitation is predicted
+- Recommended mitigation actions (what to do to reduce risk)
+- Operational expectation guidance (what to expect next)
+- Theme switcher with **White** and **Black** themes
+
+Optional quick CLI preview (non-UI):
+
+```bash
+python main.py --preview
+```
+
 ## Table of Contents
 
 - [Research Gap](#-research-gap)
